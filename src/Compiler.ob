@@ -8,7 +8,7 @@
 MODULE Compiler;
 
 IMPORT ST := STATEMENTS, PARS, UTILS, PATHS, PROG, C := CONSOLE,
-       ERRORS, STRINGS, WRITER, MSP430, THUMB, TARGETS, SCAN, TEXTDRV;
+       ERRORS, STRINGS, WRITER, MSP430, THUMB, arch, SCAN, TEXTDRV;
 
 
 CONST
@@ -165,22 +165,6 @@ BEGIN
 END keys;
 
 
-PROCEDURE OutTargetItem (target: INTEGER; text: ARRAY OF CHAR);
-VAR
-    width: INTEGER;
-
-BEGIN
-    width := 15;
-    width := width - LENGTH(TARGETS.Targets[target].ComLinePar) - 4;
-    C.String("  '"); C.String(TARGETS.Targets[target].ComLinePar); C.String("'");
-    WHILE width > 0 DO
-        C.String(20X);
-        DEC(width)
-    END;
-    C.StringLn(text)
-END OutTargetItem;
-
-
 PROCEDURE main;
 VAR
     path:       PARS.PATH;
@@ -228,22 +212,6 @@ BEGIN
         C.Ln;
         C.StringLn("Usage: Compiler <main module> <target> [optional settings]"); C.Ln;
         C.StringLn("target =");
-        IF UTILS.bit_depth = 64 THEN
-            OutTargetItem(TARGETS.Win64C, "Windows64 Console");
-            OutTargetItem(TARGETS.Win64GUI, "Windows64 GUI");
-            OutTargetItem(TARGETS.Win64DLL, "Windows64 DLL");
-            OutTargetItem(TARGETS.Linux64, "Linux64 Exec");
-            OutTargetItem(TARGETS.Linux64SO, "Linux64 SO")
-        END;
-        OutTargetItem(TARGETS.Win32C, "Windows32 Console");
-        OutTargetItem(TARGETS.Win32GUI, "Windows32 GUI");
-        OutTargetItem(TARGETS.Win32DLL, "Windows32 DLL");
-        OutTargetItem(TARGETS.Linux32, "Linux32 Exec");
-        OutTargetItem(TARGETS.Linux32SO, "Linux32 SO");
-        OutTargetItem(TARGETS.KolibriOS, "KolibriOS Exec");
-        OutTargetItem(TARGETS.KolibriOSDLL, "KolibriOS DLL");
-        OutTargetItem(TARGETS.MSP430, "MSP430x{1,2}xx microcontrollers");
-        OutTargetItem(TARGETS.STM32CM3, "STM32 Cortex-M3 microcontrollers");
         C.Ln;
         C.StringLn("optional settings:"); C.Ln;
         C.StringLn("  -out <file name>      output"); C.Ln;
@@ -281,29 +249,19 @@ BEGIN
 
     SCAN.NewDef(param);
 
-    IF TARGETS.Select(param) THEN
-        target := TARGETS.target
+    IF arch.define(param) THEN
+        target := arch.target
     ELSE
         ERRORS.Error(206)
     END;
 
-    IF TARGETS.CPU = TARGETS.cpuMSP430 THEN
-        options.ram := MSP430.minRAM;
-        options.rom := MSP430.minROM
-    END;
-
-    IF (TARGETS.CPU = TARGETS.cpuTHUMB) & (TARGETS.OS = TARGETS.osNONE) THEN
-        options.ram := THUMB.minRAM;
-        options.rom := THUMB.minROM
-    END;
-
-    IF UTILS.bit_depth < TARGETS.BitDepth THEN
+    IF UTILS.bit_depth < arch.bit_depth THEN
         ERRORS.Error(206)
     END;
 
     STRINGS.append(lib_path, "lib");
     STRINGS.append(lib_path, UTILS.slash);
-    STRINGS.append(lib_path, TARGETS.LibDir);
+    STRINGS.append(lib_path, "Linux");
     STRINGS.append(lib_path, UTILS.slash);
 
     keys(options, outname);
@@ -311,7 +269,7 @@ BEGIN
     IF outname = "" THEN
         outname := path;
         STRINGS.append(outname, modname);
-        STRINGS.append(outname, TARGETS.FileExt)
+        STRINGS.append(outname, arch.file_ext)
     ELSE
         IF PATHS.isRelative(outname) THEN
             PATHS.RelPath(app_path, outname, temp);
@@ -321,22 +279,12 @@ BEGIN
 
     PARS.init(options);
 
-    CASE TARGETS.OS OF
-    |TARGETS.osNONE:
-    |TARGETS.osWIN32,
-     TARGETS.osWIN64:   SCAN.NewDef(DEF_WINDOWS)
-    |TARGETS.osLINUX32,
-     TARGETS.osLINUX64: SCAN.NewDef(DEF_LINUX)
-    |TARGETS.osKOS:     SCAN.NewDef(DEF_KOLIBRIOS)
-    END;
+    SCAN.NewDef(DEF_LINUX);
 
-    CASE TARGETS.CPU OF
-    |TARGETS.cpuX86:    SCAN.NewDef(DEF_CPU_X86)
-    |TARGETS.cpuAMD64:  SCAN.NewDef(DEF_CPU_X8664)
-    |TARGETS.cpuMSP430:
-    |TARGETS.cpuTHUMB:
-    |TARGETS.cpuRVM32I:
-    |TARGETS.cpuRVM64I:
+
+    CASE arch.cpu OF
+    |arch.x86:    SCAN.NewDef(DEF_CPU_X86)
+    |arch.amd64:  SCAN.NewDef(DEF_CPU_X8664)
     END;
 
     ST.compile(path, lib_path, modname, outname, target, options);

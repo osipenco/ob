@@ -7,7 +7,7 @@
 
 MODULE PROG;
 
-IMPORT SCAN, LISTS, ARITH, ERRORS, C := COLLECTIONS, IL, UTILS, TARGETS, STRINGS, PATHS;
+IMPORT SCAN, LISTS, ARITH, ERRORS, C := COLLECTIONS, IL, UTILS, arch, STRINGS, PATHS;
 
 
 CONST
@@ -246,11 +246,7 @@ BEGIN
     IF varIdent.offset = -1 THEN
         size := varIdent._type.size;
         IF varIdent.global THEN
-            IF TARGETS.WinLin THEN
-                glob_align := 16
-            ELSE
-                glob_align := varIdent._type.align
-            END;
+            glob_align := 16;
             IF UTILS.Align(program.bss, glob_align) THEN
                 IF UTILS.maxint - program.bss >= size THEN
                     varIdent.offset := program.bss;
@@ -258,8 +254,8 @@ BEGIN
                 END
             END
         ELSE
-            IF UTILS.Align(size, TARGETS.WordSize) THEN
-                size := size DIV TARGETS.WordSize;
+            IF UTILS.Align(size, arch.word_size) THEN
+                size := size DIV arch.word_size;
                 IF UTILS.maxint - program.locsize >= size THEN
                     INC(program.locsize, size);
                     varIdent.offset := program.locsize
@@ -670,13 +666,9 @@ BEGIN
     enter(unit, "set",     program.stTypes.tSET);
     enter(unit, "boolean", program.stTypes.tBOOLEAN);
 
-    IF TARGETS.RealSize # 0 THEN
-        enter(unit, "real", program.stTypes.tREAL)
-    END;
+    enter(unit, "real", program.stTypes.tREAL);
 
-    IF TARGETS.BitDepth >= 32 THEN
-        enter(unit, "wchar", program.stTypes.tWCHAR)
-    END
+    enter(unit, "wchar", program.stTypes.tWCHAR)
 END enterStTypes;
 
 
@@ -728,20 +720,14 @@ BEGIN
     Enter(unit, "min",    stMIN,    idSTFUNC);
     Enter(unit, "max",    stMAX,    idSTFUNC);
 
-    IF TARGETS.RealSize # 0 THEN
-        Enter(unit, "pack",  stPACK,  idSTPROC);
-        Enter(unit, "unpk",  stUNPK,  idSTPROC);
-        Enter(unit, "floor", stFLOOR, idSTFUNC);
-        Enter(unit, "flt",   stFLT,   idSTFUNC)
-    END;
+    Enter(unit, "pack",  stPACK,  idSTPROC);
+    Enter(unit, "unpk",  stUNPK,  idSTPROC);
+    Enter(unit, "floor", stFLOOR, idSTFUNC);
+    Enter(unit, "flt",   stFLT,   idSTFUNC);
 
-    IF TARGETS.BitDepth >= 32 THEN
-        Enter(unit, "wchr", stWCHR, idSTFUNC)
-    END;
+    Enter(unit, "wchr", stWCHR, idSTFUNC);
 
-    IF TARGETS.Dispose THEN
-        Enter(unit, "dispose", stDISPOSE, idSTPROC)
-    END
+    Enter(unit, "dispose", stDISPOSE, idSTPROC)
 
 END enterStProcs;
 
@@ -1022,8 +1008,7 @@ BEGIN
     t.unit    := unit;
     t.num     := 0;
 
-    CASE TARGETS.BitDepth OF
-    |16: t.call := default16
+    CASE arch.bit_depth OF
     |32: t.call := default32
     |64: t.call := default64
     END;
@@ -1123,32 +1108,27 @@ BEGIN
         EnterProc(unit, "dint", idSYSPROC, sysDINT)
     END;
          *)
-    IF TARGETS.RealSize # 0 THEN
-        EnterProc(unit, "inf",    idSYSFUNC, sysINF);
-    END;
+    EnterProc(unit, "inf",    idSYSFUNC, sysINF);
 
-    IF TARGETS.CPU IN {TARGETS.cpuX86, TARGETS.cpuAMD64} THEN
-        EnterProc(unit, "copy",   idSYSPROC, sysCOPY)
-    END;
+    EnterProc(unit, "copy",   idSYSPROC, sysCOPY);
 
-    IF TARGETS.BitDepth >= 32 THEN
-        EnterProc(unit, "wsadr",  idSYSFUNC, sysWSADR);
-        EnterProc(unit, "put16",  idSYSPROC, sysPUT16);
-        EnterProc(unit, "put32",  idSYSPROC, sysPUT32);
-        EnterProc(unit, "get16",  idSYSPROC, sysGET16);
-        EnterProc(unit, "get32",  idSYSPROC, sysGET32);
 
-        IF LowerCase THEN
-            SCAN.setIdent(name, "card32");
-            ident := addIdent(unit, name, idTYPE);
-            ident._type := program.stTypes.tCARD32;
-            ident.export := TRUE
-        END;
-        SCAN.setIdent(name, "CARD32");
+    EnterProc(unit, "wsadr",  idSYSFUNC, sysWSADR);
+    EnterProc(unit, "put16",  idSYSPROC, sysPUT16);
+    EnterProc(unit, "put32",  idSYSPROC, sysPUT32);
+    EnterProc(unit, "get16",  idSYSPROC, sysGET16);
+    EnterProc(unit, "get32",  idSYSPROC, sysGET32);
+
+    IF LowerCase THEN
+        SCAN.setIdent(name, "card32");
         ident := addIdent(unit, name, idTYPE);
         ident._type := program.stTypes.tCARD32;
-        ident.export := TRUE;
+        ident.export := TRUE
     END;
+    SCAN.setIdent(name, "CARD32");
+    ident := addIdent(unit, name, idTYPE);
+    ident._type := program.stTypes.tCARD32;
+    ident.export := TRUE;
 
     closeUnit(unit);
 
@@ -1222,17 +1202,13 @@ BEGIN
     SCAN.init(options.lower);
     idents := C.create();
 
-    UTILS.SetBitDepth(TARGETS.BitDepth, TARGETS.RealSize = 8);
+    UTILS.SetBitDepth(arch.bit_depth, TRUE);
 
     program.options := options;
 
-    CASE TARGETS.OS OF
-    |TARGETS.osWIN32:    program.sysflags := {sf_oberon, sf_windows, sf_stdcall, sf_cdecl, sf_ccall, sf_fastcall, sf_noalign}
-    |TARGETS.osLINUX32:  program.sysflags := {sf_oberon, sf_linux, sf_stdcall, sf_cdecl, sf_ccall, sf_fastcall, sf_noalign}
-    |TARGETS.osKOS:      program.sysflags := {sf_oberon, sf_stdcall, sf_cdecl, sf_ccall, sf_fastcall, sf_noalign}
-    |TARGETS.osWIN64:    program.sysflags := {sf_oberon, sf_windows, sf_win64, sf_systemv, sf_ccall, sf_noalign}
-    |TARGETS.osLINUX64:  program.sysflags := {sf_oberon, sf_linux, sf_win64, sf_systemv, sf_ccall, sf_noalign}
-    |TARGETS.osNONE:     program.sysflags := {sf_code}
+    CASE arch.bit_depth OF
+    |32:  program.sysflags := {sf_oberon, sf_linux, sf_stdcall, sf_cdecl, sf_ccall, sf_fastcall, sf_noalign}
+    |64:  program.sysflags := {sf_oberon, sf_linux, sf_win64, sf_systemv, sf_ccall, sf_noalign}
     END;
 
     program.recCount := -1;
@@ -1242,36 +1218,32 @@ BEGIN
     program.types := LISTS.create(NIL);
     program.procs := LISTS.create(NIL);
 
-    program.stTypes.tINTEGER := enterType(tINTEGER, TARGETS.WordSize, 0, NIL);
+    program.stTypes.tINTEGER := enterType(tINTEGER, arch.word_size, 0, NIL);
     program.stTypes.tBYTE    := enterType(tBYTE,                   1, 0, NIL);
     program.stTypes.tCHAR    := enterType(tCHAR,                   1, 0, NIL);
-    program.stTypes.tSET     := enterType(tSET,     TARGETS.WordSize, 0, NIL);
+    program.stTypes.tSET     := enterType(tSET,     arch.word_size, 0, NIL);
     program.stTypes.tBOOLEAN := enterType(tBOOLEAN,                1, 0, NIL);
 
-    program.stTypes.tINTEGER.align := TARGETS.WordSize;
+    program.stTypes.tINTEGER.align := arch.word_size;
     program.stTypes.tBYTE.align    := 1;
     program.stTypes.tCHAR.align    := 1;
-    program.stTypes.tSET.align     := TARGETS.WordSize;
+    program.stTypes.tSET.align     := arch.word_size;
     program.stTypes.tBOOLEAN.align := 1;
 
-    IF TARGETS.BitDepth >= 32 THEN
-        program.stTypes.tWCHAR  := enterType(tWCHAR,  2, 0, NIL);
-        program.stTypes.tCARD32 := enterType(tCARD32, 4, 0, NIL);
-        program.stTypes.tWCHAR.align  := 2;
-        program.stTypes.tCARD32.align := 4
+    program.stTypes.tWCHAR  := enterType(tWCHAR,  2, 0, NIL);
+    program.stTypes.tCARD32 := enterType(tCARD32, 4, 0, NIL);
+    program.stTypes.tWCHAR.align  := 2;
+    program.stTypes.tCARD32.align := 4;
+
+    program.stTypes.tREAL := enterType(tREAL, 8, 0, NIL);
+    IF arch.bit_depth = 32 THEN
+        program.stTypes.tREAL.align := 4
+    ELSE
+        program.stTypes.tREAL.align := 8
     END;
 
-    IF TARGETS.RealSize # 0 THEN
-        program.stTypes.tREAL := enterType(tREAL, TARGETS.RealSize, 0, NIL);
-        IF TARGETS.OS = TARGETS.osLINUX32 THEN
-            program.stTypes.tREAL.align := 4
-        ELSE
-            program.stTypes.tREAL.align := TARGETS.RealSize
-        END
-    END;
-
-    program.stTypes.tSTRING := enterType(tSTRING, TARGETS.WordSize, 0, NIL);
-    program.stTypes.tNIL    := enterType(tNIL,    TARGETS.WordSize, 0, NIL);
+    program.stTypes.tSTRING := enterType(tSTRING, arch.word_size, 0, NIL);
+    program.stTypes.tNIL    := enterType(tNIL,    arch.word_size, 0, NIL);
     program.stTypes.tNONE   := enterType(tNONE,   0, 0, NIL);
     program.stTypes.tANYREC := enterType(tRECORD, 0, 0, NIL);
     program.stTypes.tANYREC.closed := TRUE;

@@ -9,7 +9,7 @@ MODULE RVMxI;
 
 IMPORT
 
-    PROG, WR := WRITER, IL, CHL := CHUNKLISTS, REG, UTILS, STRINGS, ERRORS, TARGETS;
+    PROG, WR := WRITER, IL, CHL := CHUNKLISTS, REG, UTILS, STRINGS, ERRORS, arch;
 
 
 CONST
@@ -1384,7 +1384,7 @@ VAR
     szData, szRAM: INTEGER;
 
 BEGIN
-    szWord := TARGETS.WordSize;
+    szWord := arch.word_size;
     IF szWord = 8 THEN
         ldr := ldr64;
         str := str64

@@ -10,7 +10,7 @@ MODULE STATEMENTS;
 IMPORT
 
     PARS, PROG, SCAN, ARITH, STRINGS, LISTS, IL, X86, AMD64, MSP430, THUMB, RVMxI,
-    ERRORS, UTILS, AVL := AVLTREES, CONSOLE, C := COLLECTIONS, TARGETS;
+    ERRORS, UTILS, AVL := AVLTREES, CONSOLE, C := COLLECTIONS, arch;
 
 
 CONST
@@ -73,8 +73,6 @@ VAR
     CaseLabels, CaseVar: C.COLLECTION;
 
     CaseVariants: LISTS.LIST;
-
-    CPU: INTEGER;
 
     tINTEGER, tBYTE, tCHAR, tWCHAR, tSET, tBOOLEAN, tREAL: PROG._TYPE;
 
@@ -610,9 +608,6 @@ BEGIN
                     IF p._type.base = tCHAR THEN
                         stroffs := String(e);
                         IL.StrAdr(stroffs);
-                        IF (CPU = TARGETS.cpuMSP430) & (p._type.size - strlen(e) - 1 > MSP430.IntVectorSize) THEN
-                            ERRORS.WarningMsg(pos.line, pos.col, 0)
-                        END
                     ELSE (* WCHAR *)
                         stroffs := StringW(e);
                         IL.StrAdr(stroffs)
@@ -777,9 +772,6 @@ BEGIN
 
         |PROG.stNEW:
             varparam(parser, pos, isPtr, TRUE, e);
-            IF CPU = TARGETS.cpuMSP430 THEN
-                PARS.check(e._type.base.size + 16 < Options.ram, pos, 63)
-            END;
             IL.New(e._type.base.size, e._type.base.num)
 
         |PROG.stDISPOSE:
@@ -979,12 +971,8 @@ BEGIN
                 getpos(parser, pos);
                 PARS.ConstExpression(parser, code);
                 PARS.check(code.typ = ARITH.tINTEGER, pos, 43);
-                IF TARGETS.WordSize > TARGETS.InstrSize THEN
-                    CASE TARGETS.InstrSize OF
-                    |1: PARS.check(ARITH.range(code, 0, 255), pos, 42)
-                    |2: PARS.check(ARITH.range(code, 0, 65535), pos, 110)
-                    END
-                END;
+                PARS.check(ARITH.range(code, 0, 255), pos, 42);
+
                 IL.AddCmd(IL.opCODE, ARITH.getInt(code));
                 comma := parser.sym = SCAN.lxCOMMA;
                 IF comma THEN
@@ -1000,7 +988,6 @@ BEGIN
                 PARS.checklex(parser, SCAN.lxRROUND);
                 PARS.Next(parser)
             END;
-            ASSERT(CPU = cpuMSP430);
             CASE proc OF
             |PROG.sysNOP:  IL.AddCmd(IL.opCODE, 4303H)
             |PROG.sysDINT: IL.AddCmd(IL.opCODE, 0C232H); IL.AddCmd(IL.opCODE, 4303H)
@@ -3105,11 +3092,11 @@ BEGIN
     ELSIF isRec(e) THEN
         IL.drop;
         IL.AddCmd(IL.opLADR, e.ident.offset - 1);
-        IL.load(TARGETS.WordSize)
+        IL.load(arch.word_size)
     ELSIF isPtr(e) THEN
         deref(pos, e, FALSE, errPTR);
-        IL.AddCmd(IL.opSUBR, TARGETS.WordSize);
-        IL.load(TARGETS.WordSize)
+        IL.AddCmd(IL.opSUBR, arch.word_size);
+        IL.load(arch.word_size)
     END;
 
     PARS.checklex(parser, SCAN.lxOF);
@@ -3335,30 +3322,15 @@ BEGIN
     getproc(rtl, "_strcmpw",  IL._strcmpw);
     getproc(rtl, "_init",     IL._init);
 
-    IF CPU IN {TARGETS.cpuX86, TARGETS.cpuAMD64} THEN
-        getproc(rtl, "_error",    IL._error);
-        getproc(rtl, "_divmod",   IL._divmod);
-        getproc(rtl, "_exit",     IL._exit);
-        getproc(rtl, "_dispose",  IL._dispose);
-        getproc(rtl, "_isrec",    IL._isrec);
-        getproc(rtl, "_dllentry", IL._dllentry);
-        getproc(rtl, "_sofinit",  IL._sofinit)
-    ELSIF CPU IN {TARGETS.cpuTHUMB, TARGETS.cpuRVM32I, TARGETS.cpuRVM64I} THEN
-        getproc(rtl, "_fmul",  IL._fmul);
-        getproc(rtl, "_fdiv",  IL._fdiv);
-        getproc(rtl, "_fdivi", IL._fdivi);
-        getproc(rtl, "_fadd",  IL._fadd);
-        getproc(rtl, "_fsub",  IL._fsub);
-        getproc(rtl, "_fsubi", IL._fsubi);
-        getproc(rtl, "_fcmp",  IL._fcmp);
-        getproc(rtl, "_floor", IL._floor);
-        getproc(rtl, "_flt",   IL._flt);
-        getproc(rtl, "_pack",  IL._pack);
-        getproc(rtl, "_unpk",  IL._unpk);
-        IF CPU IN {TARGETS.cpuRVM32I, TARGETS.cpuRVM64I} THEN
-            getproc(rtl, "_error", IL._error)
-        END
-    END
+
+    getproc(rtl, "_error",    IL._error);
+    getproc(rtl, "_divmod",   IL._divmod);
+    getproc(rtl, "_exit",     IL._exit);
+    getproc(rtl, "_dispose",  IL._dispose);
+    getproc(rtl, "_isrec",    IL._isrec);
+    getproc(rtl, "_dllentry", IL._dllentry);
+    getproc(rtl, "_sofinit",  IL._sofinit)
+
 
 END setrtl;
 
@@ -3378,7 +3350,6 @@ BEGIN
     tREAL    := PROG.program.stTypes.tREAL;
 
     Options := options;
-    CPU := TARGETS.CPU;
 
     ext := UTILS.FILE_EXT;
     CaseLabels := C.create();
@@ -3387,24 +3358,24 @@ BEGIN
     CaseVariants := LISTS.create(NIL);
     LISTS.push(CaseVariants, NewVariant(0, NIL));
 
-    IL.init(CPU);
+    IL.init(arch.cpu);
 
-    IF TARGETS.RTL THEN
-        parser := PARS.create(path, lib_path, StatSeq, expression, designator, chkreturn);
+
+    parser := PARS.create(path, lib_path, StatSeq, expression, designator, chkreturn);
+    IF parser.open(parser, UTILS.RTL_NAME, UTILS.FILE_EXT) THEN
+        parser.parse(parser);
+        PARS.destroy(parser)
+    ELSE
+        PARS.destroy(parser);
+        parser := PARS.create(lib_path, lib_path, StatSeq, expression, designator, chkreturn);
         IF parser.open(parser, UTILS.RTL_NAME, UTILS.FILE_EXT) THEN
             parser.parse(parser);
             PARS.destroy(parser)
         ELSE
-            PARS.destroy(parser);
-            parser := PARS.create(lib_path, lib_path, StatSeq, expression, designator, chkreturn);
-            IF parser.open(parser, UTILS.RTL_NAME, UTILS.FILE_EXT) THEN
-                parser.parse(parser);
-                PARS.destroy(parser)
-            ELSE
-                ERRORS.FileNotFound(lib_path, UTILS.RTL_NAME, UTILS.FILE_EXT)
-            END
+            ERRORS.FileNotFound(lib_path, UTILS.RTL_NAME, UTILS.FILE_EXT)
         END
     END;
+
 
     parser := PARS.create(path, lib_path, StatSeq, expression, designator, chkreturn);
     parser.main := TRUE;
@@ -3421,21 +3392,15 @@ BEGIN
         ERRORS.Error(204)
     END;
 
-    IF TARGETS.RTL THEN
-        setrtl
-    END;
+    setrtl;
 
     PROG.DelUnused(IL.DelImport);
 
     IL.set_bss(PROG.program.bss);
 
-    CASE CPU OF
-    |TARGETS.cpuAMD64:   AMD64.CodeGen(outname, target, options)
-    |TARGETS.cpuX86:       X86.CodeGen(outname, target, options)
-    |TARGETS.cpuMSP430: MSP430.CodeGen(outname, target, options)
-    |TARGETS.cpuTHUMB:   THUMB.CodeGen(outname, target, options)
-    |TARGETS.cpuRVM32I,
-     TARGETS.cpuRVM64I:  RVMxI.CodeGen(outname, target, options)
+    CASE arch.cpu OF
+    |arch.amd64:   AMD64.CodeGen(outname, target, options)
+    |arch.x86:       X86.CodeGen(outname, target, options)
     END
 
 END compile;

@@ -8,7 +8,7 @@
 MODULE X86;
 
 IMPORT IL, REG, UTILS, LISTS, BIN, PE32, KOS, MSCOFF, ELF, PROG,
-       CHL := CHUNKLISTS, PATHS, TARGETS, ERRORS;
+       CHL := CHUNKLISTS, PATHS, arch, ERRORS;
 
 
 CONST
@@ -1814,16 +1814,10 @@ BEGIN
 
         |IL.opNEW:
             PushAll(1);
-            CASE TARGETS.OS OF
-            |TARGETS.osWIN32:
-                n := param2 + 4;
-                ASSERT(UTILS.Align(n, 4))
-            |TARGETS.osLINUX32:
+            CASE arch.bit_depth OF
+            |32:
                 n := param2 + 16;
                 ASSERT(UTILS.Align(n, 16))
-            |TARGETS.osKOS:
-                n := param2 + 8;
-                ASSERT(UTILS.Align(n, 32))
             END;
             pushc(n);
             pushc(param1);
@@ -1887,27 +1881,21 @@ BEGIN
 
         |IL.opISREC:
             PushAll(2);
-            IF ~(target IN {TARGETS.KolibriOSDrv, TARGETS.KolibriOSKer}) THEN                
-                param2 := param2*tcount
-            END;
+            param2 := param2*tcount;
             pushc(param2);
             CallRTL(pic, IL._isrec);
             GetRegA
 
         |IL.opIS:
             PushAll(1);
-            IF ~(target IN {TARGETS.KolibriOSDrv, TARGETS.KolibriOSKer}) THEN                
-                param2 := param2*tcount
-            END;
+            param2 := param2*tcount;
             pushc(param2);
             CallRTL(pic, IL._is);
             GetRegA
 
         |IL.opTYPEGR:
             PushAll(1);
-            IF ~(target IN {TARGETS.KolibriOSDrv, TARGETS.KolibriOSKer}) THEN                
-                param2 := param2*tcount
-            END;
+            param2 := param2*tcount;
             pushc(param2);
             CallRTL(pic, IL._guardrec);
             GetRegA
@@ -1916,9 +1904,7 @@ BEGIN
             UnOp(reg1);
             PushAll(0);
             push(reg1);
-            IF ~(target IN {TARGETS.KolibriOSDrv, TARGETS.KolibriOSKer}) THEN                
-                param2 := param2*tcount
-            END;
+            param2 := param2*tcount;
             pushc(param2);
             CallRTL(pic, IL._guard);
             GetRegA
@@ -1927,9 +1913,7 @@ BEGIN
             UnOp(reg1);
             PushAll(0);
             pushm(reg1, -4);
-            IF ~(target IN {TARGETS.KolibriOSDrv, TARGETS.KolibriOSKer}) THEN                
-                param2 := param2*tcount
-            END;
+            param2 := param2*tcount;
             pushc(param2);
             CallRTL(pic, IL._guardrec);
             GetRegA
@@ -1937,9 +1921,7 @@ BEGIN
         |IL.opCASET:
             push(ecx);
             push(ecx);
-            IF ~(target IN {TARGETS.KolibriOSDrv, TARGETS.KolibriOSKer}) THEN                
-                param2 := param2*tcount
-            END;
+            param2 := param2*tcount;
             pushc(param2);
             CallRTL(pic, IL._guardrec);
             pop(ecx);
@@ -2304,27 +2286,7 @@ BEGIN
     mainLocVarSize := 0;
     LocVarSize := 0;
 
-    IF target IN {TARGETS.Win32DLL, TARGETS.KolibriOSDrv} THEN
-        IF target = TARGETS.Win32DLL THEN
-            pushm(ebp, 16)
-        ELSE
-            pushc(0)
-        END;
-        pushm(ebp, 12);
-        pushm(ebp, 8);
-        CallRTL(pic, IL._dllentry);
-        test(eax);
-        jcc(je, dllret);
-        pushc(0)
-    ELSIF target = TARGETS.KolibriOSDLL THEN
-        OutByte(68H);  (* push IMPORT *)
-        Reloc(BIN.IMPTAB, 0)
-    ELSIF target = TARGETS.KolibriOS THEN
-        reg1 := GetAnyReg();
-        Pic(reg1, BIN.IMPTAB, 0);
-        push(reg1);    (* push IMPORT *)
-        drop
-    ELSIF target = TARGETS.Linux32 THEN
+    IF target = arch.elf32 THEN
         mov(eax, ebp);
         addrc(eax, 4);
         push(eax)
@@ -2354,7 +2316,7 @@ BEGIN
 
     CallRTL(pic, IL._init);
 
-    IF target IN {TARGETS.Win32C, TARGETS.Win32GUI, TARGETS.Linux32} THEN
+    IF target = arch.elf32 THEN
         L := NewLabel();
         pushc(0);
         push(esp);
@@ -2404,29 +2366,10 @@ VAR
 
 BEGIN
 
-    IF target IN {TARGETS.Win32C, TARGETS.Win32GUI, TARGETS.KolibriOS, TARGETS.Linux32} THEN
+    IF target = arch.elf32 THEN
         pushc(0);
         CallRTL(pic, IL._exit);
-    ELSIF target = TARGETS.Win32DLL THEN
-        SetLabel(dllret);
-        movrc(eax, 1);
-        OutByte(0C9H); (* leave *)
-        OutByte3(0C2H, 0CH, 0) (* ret 12 *)
-    ELSIF target = TARGETS.KolibriOSDrv THEN
-        OutByte(0C9H); (* leave *)
-        ret;
-        SetLabel(dllret);
-        movrc(eax, 0);
-        OutByte(0C9H); (* leave *)
-        ret
-    ELSIF target = TARGETS.KolibriOSDLL THEN
-        movrc(eax, 1);
-        OutByte(0C9H); (* leave *)
-        ret
-    ELSIF target = TARGETS.KolibriOSKer THEN
-        OutByte(0C9H); (* leave *)
-        ret;
-    ELSIF target = TARGETS.Linux32SO THEN
+    ELSIF target = arch.so32 THEN
         OutByte(0C9H); (* leave *)
         ret;
         SetLabel(sofinit);
@@ -2453,10 +2396,6 @@ BEGIN
     BIN.PutDataStr(program, ext);
     BIN.PutData(program, 0);
 
-    IF target = TARGETS.KolibriOSDLL THEN
-        BIN.Export(program, "lib_init", dllinit);
-    END;
-
     exp := IL.codes.export.first(IL.EXPORT_PROC);
     WHILE exp # NIL DO
         BIN.Export(program, exp.name, exp.label);
@@ -2473,13 +2412,11 @@ END epilog;
 
 PROCEDURE align16* (bit64: BOOLEAN);
 BEGIN
-    IF TARGETS.WinLin THEN
-        WHILE CHL.Length(IL.codes.data) MOD 16 # 0 DO
-            CHL.PushByte(IL.codes.data, 0)
-        END;
-        WHILE CHL.Length(IL.codes.types) MOD (4 - 2*ORD(bit64)) # 0 DO
-            CHL.PushInt(IL.codes.types, 0)
-        END
+    WHILE CHL.Length(IL.codes.data) MOD 16 # 0 DO
+        CHL.PushByte(IL.codes.data, 0)
+    END;
+    WHILE CHL.Length(IL.codes.types) MOD (4 - 2*ORD(bit64)) # 0 DO
+        CHL.PushInt(IL.codes.types, 0)
     END
 END align16;
 
@@ -2502,15 +2439,7 @@ BEGIN
     dllret  := NewLabel();
     sofinit := NewLabel();
 
-    IF target = TARGETS.KolibriOSDLL THEN
-        opt.pic := FALSE
-    END;
-
-    IF target IN {TARGETS.KolibriOSKer, TARGETS.KolibriOSDrv} THEN
-        opt.pic := TRUE
-    END;
-
-    IF TARGETS.OS IN {TARGETS.osWIN32, TARGETS.osLINUX32} THEN
+    IF arch.bit_depth = 32 THEN
         opt.pic := TRUE
     END;
 
@@ -2521,16 +2450,9 @@ BEGIN
     epilog(opt.pic, outname, target, opt.stack, opt.version, dllinit, dllret, sofinit);
 
     BIN.fixup(program);
-    IF TARGETS.OS = TARGETS.osWIN32 THEN
-        PE32.write(program, outname, target = TARGETS.Win32C, target = TARGETS.Win32DLL, FALSE, opt.PE32FileAlignment)
-    ELSIF target = TARGETS.KolibriOSDrv THEN
-        PE32.write(program, outname, FALSE, TRUE, FALSE, 512)
-    ELSIF target IN {TARGETS.KolibriOS, TARGETS.KolibriOSKer} THEN
-        KOS.write(program, outname, target = TARGETS.KolibriOSKer)
-    ELSIF target = TARGETS.KolibriOSDLL THEN
-        MSCOFF.write(program, outname, opt.version)
-    ELSIF TARGETS.OS = TARGETS.osLINUX32 THEN
-        ELF.write(program, outname, sofinit, target = TARGETS.Linux32SO, FALSE)
+
+    IF arch.bit_depth = 32 THEN
+        ELF.write(program, outname, sofinit, target = arch.so32, FALSE)
     END
 END CodeGen;
 

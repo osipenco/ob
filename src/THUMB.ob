@@ -8,7 +8,7 @@
 MODULE THUMB;
 
 IMPORT PROG, LISTS, CHL := CHUNKLISTS, BIN, REG, IL, C := CONSOLE,
-       UTILS, WR := WRITER, HEX, ERRORS, TARGETS;
+       UTILS, WR := WRITER, HEX, ERRORS;
 
 
 CONST
@@ -2358,11 +2358,6 @@ VAR
     i, j, DataAdr, BssAdr, DataSize, BssSize, CodeSize: INTEGER;
 
 BEGIN
-    IF target = TARGETS.STM32CM3 THEN
-        SetTarget(08000000H, MIN(MAX(options.rom, minROM), maxROM) * 1024, 0,
-                  20000000H, MIN(MAX(options.ram, minRAM), maxRAM) * 1024, 0,
-                  CortexM3, FALSE)
-    END;
 
     tcount := CHL.Length(IL.codes.types);
 

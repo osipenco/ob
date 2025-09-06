@@ -8,7 +8,7 @@
 MODULE PARS;
 
 IMPORT PROG, SCAN, ARITH, STRINGS, ERRORS, LISTS, IL, CONSOLE, PATHS, UTILS,
-       C := COLLECTIONS, TARGETS, THUMB, MSP430;
+       C := COLLECTIONS, arch, THUMB, MSP430;
 
 
 CONST
@@ -131,13 +131,6 @@ VAR
 BEGIN
     SCAN.Next(parser.scanner, parser.lex);
     errno := parser.lex.error;
-    IF errno = 0 THEN
-        IF (TARGETS.RealSize = 0) & (parser.lex.sym = SCAN.lxFLOAT) THEN
-            errno := -SCAN.lxERROR13
-        ELSIF (TARGETS.BitDepth = 16) & (parser.lex.sym = SCAN.lxCHAR) & (parser.lex.value.typ = ARITH.tWCHAR) THEN
-            errno := -SCAN.lxERROR10
-        END
-    END;
 
     IF errno # 0 THEN
         check1(FALSE, parser, errno)
@@ -577,11 +570,9 @@ BEGIN
     |PROG.sf_cdecl:
         res := PROG.cdecl
     |PROG.sf_ccall:
-        IF TARGETS.OS IN {TARGETS.osWIN32, TARGETS.osLINUX32, TARGETS.osKOS} THEN
+        IF arch.bit_depth = 32 THEN
             res := PROG.ccall
-        ELSIF TARGETS.OS = TARGETS.osWIN64 THEN
-            res := PROG.win64
-        ELSIF TARGETS.OS = TARGETS.osLINUX64 THEN
+        ELSIF arch.bit_depth = 64 THEN
             res := PROG.systemv
         END
     |PROG.sf_win64:
@@ -593,21 +584,15 @@ BEGIN
     |PROG.sf_fastcall:
         res := PROG.fastcall
     |PROG.sf_oberon:
-        IF TARGETS.OS IN {TARGETS.osWIN32, TARGETS.osLINUX32, TARGETS.osKOS} THEN
+        IF arch.bit_depth = 32 THEN
             res := PROG.default32
-        ELSIF TARGETS.OS IN {TARGETS.osWIN64, TARGETS.osLINUX64} THEN
+        ELSIF arch.bit_depth = 64 THEN
             res := PROG.default64
         END
-    |PROG.sf_windows:
-        IF TARGETS.OS = TARGETS.osWIN32 THEN
-            res := PROG.stdcall
-        ELSIF TARGETS.OS = TARGETS.osWIN64 THEN
-            res := PROG.win64
-        END
     |PROG.sf_linux:
-        IF TARGETS.OS = TARGETS.osLINUX32 THEN
+        IF arch.bit_depth = 32 THEN
             res := PROG.ccall
-        ELSIF TARGETS.OS = TARGETS.osLINUX64 THEN
+        ELSIF arch.bit_depth = 64 THEN
             res := PROG.systemv
         END
     |PROG.sf_noalign:
@@ -670,14 +655,13 @@ BEGIN
         checklex(parser, SCAN.lxRSQUARE);
         Next(parser)
     ELSE
-        CASE TARGETS.BitDepth OF
-        |16: call := PROG.default16
-        |32: IF TARGETS.CPU = TARGETS.cpuX86 THEN
+        CASE arch.bit_depth OF
+        |32: IF arch.cpu = arch.x86 THEN
                  call := PROG.default32
              ELSE
                  call := PROG.cdecl
              END
-        |64: IF TARGETS.CPU = TARGETS.cpuAMD64 THEN
+        |64: IF arch.cpu = arch.amd64 THEN
                  call := PROG.default64
              ELSE
                  call := PROG.cdecl
@@ -686,7 +670,7 @@ BEGIN
     END;
 
     IF _import # NIL THEN
-        check(TARGETS.Import, pos, 70)
+        check(FALSE, pos, 70)
     END
 
     RETURN call
@@ -842,8 +826,8 @@ BEGIN
         ExpectSym(parser, SCAN.lxTO);
         Next(parser);
 
-        t := PROG.enterType(PROG.tPOINTER, TARGETS.AdrSize, 0, unit);
-        t.align := TARGETS.AdrSize;
+        t := PROG.enterType(PROG.tPOINTER, arch.word_size, 0, unit);
+        t.align := arch.word_size;
 
         getpos(parser, pos);
 
@@ -861,8 +845,8 @@ BEGIN
 
     ELSIF parser.sym = SCAN.lxPROCEDURE THEN
         NextPos(parser, pos);
-        t := PROG.enterType(PROG.tPROCEDURE, TARGETS.AdrSize, 0, unit);
-        t.align := TARGETS.AdrSize;
+        t := PROG.enterType(PROG.tPROCEDURE, arch.word_size, 0, unit);
+        t.align := arch.word_size;
         t.call := procflag(parser, _import, FALSE);
         FormalParameters(parser, t)
     ELSE
@@ -1018,16 +1002,16 @@ VAR
 
         check(PROG.openScope(unit, proc.proc), pos, 116);
 
-        proc._type := PROG.enterType(PROG.tPROCEDURE, TARGETS.AdrSize, 0, unit);
+        proc._type := PROG.enterType(PROG.tPROCEDURE, arch.word_size, 0, unit);
         t := proc._type;
-        t.align := TARGETS.AdrSize;
+        t.align := arch.word_size;
         t.call  := call;
 
         FormalParameters(parser, t);
 
         IF parser.sym = SCAN.lxLSQUARE THEN
             getpos(parser, pos2);
-            check((TARGETS.CPU = TARGETS.cpuTHUMB) & (TARGETS.OS = TARGETS.osNONE), pos2, 24);
+            check(FALSE, pos2, 24);
             Next(parser);
             getpos(parser, pos2);
             ConstExpression(parser, iv);
@@ -1073,12 +1057,9 @@ VAR
                 getpos(parser, pos2);
                 ConstExpression(parser, code);
                 check(code.typ = ARITH.tINTEGER, pos2, 43);
-                IF TARGETS.WordSize > TARGETS.InstrSize THEN
-                    CASE TARGETS.InstrSize OF
-                    |1: check(ARITH.range(code, 0, 255), pos, 42)
-                    |2: check(ARITH.range(code, 0, 65535), pos, 110)
-                    END
-                END;
+
+                check(ARITH.range(code, 0, 255), pos, 42);
+
                 IL.AddCmd(IL.opCODE, ARITH.getInt(code));
                 comma := parser.sym = SCAN.lxCOMMA;
                 IF comma THEN
@@ -1094,10 +1075,7 @@ VAR
 
         IF _import = NIL THEN
 
-            IF parser.main & proc.export & TARGETS.Dll THEN
-                IF TARGETS.target = TARGETS.KolibriOSDLL THEN
-                    check((proc.name.s # "lib_init") & (proc.name.s # "version"), pos, 114)
-                END;
+            IF parser.main & proc.export THEN
                 IL.AddExp(label, proc.name.s);
                 proc.proc.used := TRUE
             END;
@@ -1141,12 +1119,6 @@ VAR
                 checklex(parser, SCAN.lxEND)
             ELSE
                 proc.proc.leave := IL.LeaveC()
-            END;
-
-            IF (TARGETS.CPU = TARGETS.cpuMSP430) & ~codeProc THEN
-                check(MSP430.CheckProcDataSize(enter.param2 + proc._type.parSize, PROG.program.options.ram), pos1, 63);
-                enter.param2 := enter.param2 * 65536 + line;
-                enter.param3 := IL.codes.errlabels[10]
             END
         END;
 
@@ -1281,9 +1253,7 @@ BEGIN
         CONSOLE.Ln
     END;
 
-    IF TARGETS.CPU IN {TARGETS.cpuX86, TARGETS.cpuAMD64} THEN
-        IL.fname(parser.fname)
-    END;
+    IL.fname(parser.fname);
 
     label := IL.NewLabel();
     IL.Jmp(IL.opJMP, label);
