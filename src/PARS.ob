@@ -8,7 +8,7 @@
 MODULE PARS;
 
 IMPORT PROG, SCAN, ARITH, STRINGS, ERRORS, LISTS, IL, CONSOLE, PATHS, UTILS,
-       C := COLLECTIONS, arch, THUMB, MSP430;
+       C := COLLECTIONS, arch;
 
 
 CONST
@@ -1016,8 +1016,6 @@ VAR
             getpos(parser, pos2);
             ConstExpression(parser, iv);
             check(iv.typ = ARITH.tINTEGER, pos2, 43);
-            check((0 <= ARITH.Int(iv)) & (ARITH.Int(iv) <= THUMB.maxIVT), pos2, 46);
-            check(THUMB.SetIV(ARITH.Int(iv)), pos2, 121);
             checklex(parser, SCAN.lxRSQUARE);
             Next(parser);
             handler := TRUE

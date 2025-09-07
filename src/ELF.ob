@@ -7,7 +7,7 @@
 
 MODULE ELF;
 
-IMPORT BIN, WR := WRITER, CHL := CHUNKLISTS, LISTS, PE32, UTILS, STRINGS;
+IMPORT BIN, WR := WRITER, CHL := CHUNKLISTS, LISTS, UTILS, STRINGS;
 
 
 CONST
@@ -174,7 +174,6 @@ BEGIN
     END
 END MakeHash;
 
-
 PROCEDURE write* (program: BIN.PROGRAM; FileName: ARRAY OF CHAR; fini: INTEGER; so, amd64: BOOLEAN);
 CONST
     interp  =  0;
@@ -208,6 +207,9 @@ CONST
     DT_RELSZ = 18;
     DT_RELENT = 19;
 
+TYPE
+    A = RECORD Code, Data, Bss, Import: INTEGER END;
+
 VAR
     ehdr: Elf32_Ehdr;
     phdr: ARRAY 16 OF Elf32_Phdr;
@@ -224,7 +226,46 @@ VAR
 
     Name: ARRAY 2048 OF CHAR;
 
-    Address: PE32.VIRTUAL_ADDR;
+    Address: A;
+
+PROCEDURE fixup(program: BIN.PROGRAM; Address: A; amd64: BOOLEAN);
+VAR
+    reloc: BIN.RELOC;
+    iproc: BIN.IMPRT;
+    code:  CHL.BYTELIST;
+    L, delta, delta0, AdrImp, offset: INTEGER;
+
+BEGIN
+    AdrImp := Address.Import + 5 * 4;
+    code := program.code;
+    reloc := program.rel_list.first(BIN.RELOC);
+    delta0 := 3 - 7 * ORD(amd64) - Address.Code;
+
+    WHILE reloc # NIL DO
+
+        offset := reloc.offset;
+        L := BIN.get32le(code, offset);
+        delta := delta0 - offset;
+
+        CASE reloc.opcode OF
+        |BIN.PICDATA:
+            INC(delta, L + Address.Data)
+
+        |BIN.PICCODE:
+            INC(delta, BIN.GetLabel(program, L) + Address.Code)
+
+        |BIN.PICBSS:
+            INC(delta, L + Address.Bss)
+
+        |BIN.PICIMP:
+            iproc := BIN.GetIProc(program, L);
+            INC(delta, iproc.FirstThunk * (4 * (ORD(amd64) + 1)) + AdrImp)
+        END;
+        BIN.put32le(code, offset, delta);
+
+        reloc := reloc.next(BIN.RELOC)
+    END
+END fixup;
 
 BEGIN
     dynamic := LISTS.create(NIL);
@@ -440,7 +481,7 @@ BEGIN
     Address.Bss    := WR.align(phdr[bss].p_vaddr, 16);
     Address.Import := 0;
 
-    PE32.fixup(program, Address, amd64);
+    fixup(program, Address, amd64);
 
     item := symtab.first;
     WHILE item # NIL DO

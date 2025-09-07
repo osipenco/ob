@@ -9,7 +9,7 @@ MODULE STATEMENTS;
 
 IMPORT
 
-    PARS, PROG, SCAN, ARITH, STRINGS, LISTS, IL, X86, AMD64, MSP430, THUMB, RVMxI,
+    PARS, PROG, SCAN, ARITH, STRINGS, LISTS, IL, X86, AMD64,
     ERRORS, UTILS, AVL := AVLTREES, CONSOLE, C := COLLECTIONS, arch;
 
 
@@ -26,9 +26,8 @@ CONST
     errCHR    = 9;  errWCHR = 10;  errBYTE = 11;
 
     chkIDX* = 0; chkGUARD* = 1; chkPTR* = 2; chkCHR* = 3; chkWCHR* = 4; chkBYTE* = 5;
-    chkSTK* = MSP430.chkSTK; (* 6 *)
 
-    chkALL* = {chkIDX, chkGUARD, chkPTR, chkCHR, chkWCHR, chkBYTE, chkSTK};
+    chkALL* = {chkIDX, chkGUARD, chkPTR, chkCHR, chkWCHR, chkBYTE};
 
 
 TYPE

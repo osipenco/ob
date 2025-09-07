@@ -1101,13 +1101,7 @@ BEGIN
     EnterProc(unit, "code",   idSYSPROC, sysCODE);
     EnterProc(unit, "move",   idSYSPROC, sysMOVE);
     EnterProc(unit, "val",    idSYSPROC, sysVAL);
-           (*
-    IF program.target.sys = mConst.Target_iMSP430 THEN
-        EnterProc(unit, "nop",  idSYSPROC, sysNOP);
-        EnterProc(unit, "eint", idSYSPROC, sysEINT);
-        EnterProc(unit, "dint", idSYSPROC, sysDINT)
-    END;
-         *)
+
     EnterProc(unit, "inf",    idSYSFUNC, sysINF);
 
     EnterProc(unit, "copy",   idSYSPROC, sysCOPY);

@@ -8,7 +8,7 @@
 MODULE Compiler;
 
 IMPORT ST := STATEMENTS, PARS, UTILS, PATHS, PROG, C := CONSOLE,
-       ERRORS, STRINGS, WRITER, MSP430, THUMB, arch, SCAN, TEXTDRV;
+       ERRORS, STRINGS, WRITER, arch, SCAN, TEXTDRV;
 
 
 CONST
@@ -66,9 +66,6 @@ BEGIN
                 DEC(i)
             END
 
-        ELSIF param = "-fa" THEN
-            getVal(i, options.PE32FileAlignment)
-
         ELSIF param = "-out" THEN
             INC(i);
             UTILS.GetArg(i, param);
@@ -113,8 +110,6 @@ BEGIN
                         EXCL(checking, ST.chkCHR);
                         EXCL(checking, ST.chkWCHR);
                         EXCL(checking, ST.chkBYTE)
-                    ELSIF param[j] = "s" THEN
-                        EXCL(checking, ST.chkSTK)
                     ELSIF param[j] = "a" THEN
                         checking := {}
                     END;
