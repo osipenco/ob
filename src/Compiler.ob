@@ -256,8 +256,6 @@ BEGIN
 
     STRINGS.append(lib_path, "lib");
     STRINGS.append(lib_path, UTILS.slash);
-    STRINGS.append(lib_path, "Linux");
-    STRINGS.append(lib_path, UTILS.slash);
 
     keys(options, outname);
     TEXTDRV.setTabSize(options.tab);
