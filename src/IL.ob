@@ -7,7 +7,7 @@
 
 MODULE IL;
 
-IMPORT LISTS, SCAN, STRINGS, CHL := CHUNKLISTS, C := COLLECTIONS, PATHS;
+IMPORT LISTS, SCAN, STRINGS, CHL := CHUNKLISTS, stack, PATHS;
 
 
 CONST
@@ -210,7 +210,7 @@ VAR
     codes*: CODES;
     CPU: INTEGER;
 
-    commands: C.COLLECTION;
+    commands: stack.item;
 
 
 PROCEDURE set_dmin* (value: INTEGER);
@@ -234,10 +234,10 @@ END set_rtl;
 PROCEDURE NewCmd (): COMMAND;
 VAR
     cmd:   COMMAND;
-    citem: C.ITEM;
+    citem: stack.item;
 
 BEGIN
-    citem := C.pop(commands);
+    citem := stack.pop(commands);
     IF citem = NIL THEN
         NEW(cmd)
     ELSE
@@ -467,7 +467,7 @@ BEGIN
         LISTS.insert(codes.commands, cur, nov);
         codes.last := nov
     ELSE
-        C.push(commands, nov);
+        stack.push(commands, nov);
         codes.last := cur
     END
 END insert;
@@ -544,7 +544,7 @@ END AddCmd0;
 PROCEDURE delete (cmd: COMMAND);
 BEGIN
     LISTS.delete(codes.commands, cmd);
-    C.push(commands, cmd)
+    stack.push(commands, cmd)
 END delete;
 
 
@@ -559,13 +559,13 @@ BEGIN
         REPEAT
             next := cur.next;
             LISTS.delete(codes.commands, cur);
-            C.push(commands, cur);
+            stack.push(commands, cur);
             cur := next
         UNTIL cur = last
     END;
 
     LISTS.delete(codes.commands, cur);
-    C.push(commands, cur)
+    stack.push(commands, cur)
 END delete2;
 
 
@@ -1118,7 +1118,7 @@ VAR
     i:   INTEGER;
 
 BEGIN
-    commands := C.create();
+    commands := stack.create();
 
     CPU := pCPU;
 

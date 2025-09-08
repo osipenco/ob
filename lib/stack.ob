@@ -44,9 +44,11 @@ end;
 
 
 procedure pop*(top: item): item;
+    var element: item;
 begin
-    if top.link # nil then top.link := top.link.link end;
-    return top.link
+    element := top.link;
+    if element # nil then top.link := element.link end;
+    return element
 end;
 
 

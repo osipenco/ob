@@ -7,12 +7,12 @@
 
 MODULE FILES;
 
-IMPORT UTILS, C := COLLECTIONS;
+IMPORT UTILS, stack;
 
 
 TYPE
 
-    FILE* = POINTER TO RECORD (C.ITEM)
+    FILE* = POINTER TO RECORD (stack.item)
 
         ptr: INTEGER;
 
@@ -23,7 +23,7 @@ TYPE
 
 VAR
 
-    files: C.COLLECTION;
+    files: stack.item;
 
 
 PROCEDURE copy (src: ARRAY OF BYTE; src_idx: INTEGER; VAR dst: ARRAY OF BYTE; dst_idx: INTEGER; bytes: INTEGER);
@@ -58,10 +58,10 @@ END flush;
 PROCEDURE NewFile (): FILE;
 VAR
     file:  FILE;
-    citem: C.ITEM;
+    citem: stack.item;
 
 BEGIN
-    citem := C.pop(files);
+    citem := stack.pop(files);
     IF citem = NIL THEN
         NEW(file)
     ELSE
@@ -128,7 +128,7 @@ BEGIN
         UTILS.FileClose(file.ptr);
         file.ptr := 0;
 
-        C.push(files, file);
+        stack.push(files, file);
         file := NIL
     END
 END close;
@@ -196,5 +196,5 @@ END WriteByte;
 
 
 BEGIN
-    files := C.create()
+    files := stack.create()
 END FILES.

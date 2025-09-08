@@ -7,7 +7,7 @@
 
 MODULE PROG;
 
-IMPORT SCAN, LISTS, ARITH, ERRORS, C := COLLECTIONS, IL, UTILS, arch, STRINGS, PATHS;
+IMPORT SCAN, LISTS, ARITH, ERRORS, stack, IL, UTILS, arch, STRINGS, PATHS;
 
 
 CONST
@@ -217,17 +217,17 @@ TYPE
 VAR
 
     LowerCase*: BOOLEAN;
-    idents: C.COLLECTION;
+    idents: stack.item;
     program*: PROGRAM;
 
 
 PROCEDURE NewIdent (): IDENT;
 VAR
     ident: IDENT;
-    citem: C.ITEM;
+    citem: stack.item;
 
 BEGIN
-    citem := C.pop(idents);
+    citem := stack.pop(idents);
     IF citem = NIL THEN
         NEW(ident)
     ELSE
@@ -294,7 +294,7 @@ BEGIN
         prev := ident.prev(IDENT);
         IF ~ident.export THEN
             LISTS.delete(unit.idents, ident);
-            C.push(idents, ident)
+            stack.push(idents, ident)
         END;
         ident := prev
     END;
@@ -481,12 +481,12 @@ BEGIN
             ERRORS.HintMsg(del.name.s, del.pos.line, del.pos.col, 0)
         END;
         LISTS.delete(unit.idents, del);
-        C.push(idents, del)
+        stack.push(idents, del)
     END;
 
     IF (item # NIL) & (item.typ = idGUARD) THEN
         LISTS.delete(unit.idents, item);
-        C.push(idents, item)
+        stack.push(idents, item)
     END;
 
     DEC(unit.scopeLvl)
@@ -1194,7 +1194,7 @@ PROCEDURE create* (options: OPTIONS);
 BEGIN
     LowerCase := options.lower;
     SCAN.init(options.lower);
-    idents := C.create();
+    idents := stack.create();
 
     UTILS.SetBitDepth(arch.bit_depth, TRUE);
 

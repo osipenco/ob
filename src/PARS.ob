@@ -7,8 +7,7 @@
 
 MODULE PARS;
 
-IMPORT PROG, SCAN, ARITH, STRINGS, ERRORS, LISTS, IL, CONSOLE, PATHS, UTILS,
-       C := COLLECTIONS, arch;
+IMPORT PROG, SCAN, ARITH, STRINGS, ERRORS, LISTS, IL, CONSOLE, PATHS, UTILS, stack, arch;
 
 
 CONST
@@ -46,7 +45,7 @@ TYPE
     EXPRPROC  = PROCEDURE (parser: PARSER; VAR e: EXPR);
     RETPROC   = PROCEDURE (parser: PARSER; e: EXPR; t: PROG._TYPE; pos: POSITION): BOOLEAN;
 
-    rPARSER = RECORD (C.ITEM)
+    rPARSER = RECORD (stack.item)
 
         fname*:      PATH;
         path:        PATH;
@@ -74,7 +73,7 @@ TYPE
 
 VAR
 
-    parsers: C.COLLECTION;
+    parsers: stack.item;
 
     lines*, modules: INTEGER;
 
@@ -85,7 +84,7 @@ BEGIN
         SCAN.close(parser.scanner)
     END;
 
-    C.push(parsers, parser);
+    stack.push(parsers, parser);
     parser := NIL
 END destroy;
 
@@ -1311,10 +1310,10 @@ END open;
 PROCEDURE NewParser (): PARSER;
 VAR
     pars:  PARSER;
-    citem: C.ITEM;
+    citem: stack.item;
 
 BEGIN
-    citem := C.pop(parsers);
+    citem := stack.pop(parsers);
     IF citem = NIL THEN
         NEW(pars)
     ELSE
@@ -1357,7 +1356,7 @@ END create;
 PROCEDURE init* (options: PROG.OPTIONS);
 BEGIN
     PROG.create(options);
-    parsers := C.create();
+    parsers := stack.create();
     lines   := 0;
     modules := 0
 END init;

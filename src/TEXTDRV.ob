@@ -7,7 +7,7 @@
 
 MODULE TEXTDRV;
 
-IMPORT FILES, C := COLLECTIONS;
+IMPORT FILES, stack;
 
 
 CONST
@@ -21,7 +21,7 @@ CONST
 
 TYPE
 
-    TEXT* = POINTER TO RECORD (C.ITEM)
+    TEXT* = POINTER TO RECORD (stack.item)
 
         chunk:        ARRAY CHUNK OF CHAR;
         pos, size:    INTEGER;
@@ -46,7 +46,7 @@ TYPE
 
 VAR
 
-    texts: C.COLLECTION;
+    texts: stack.item;
     TabSize: INTEGER;
 
 
@@ -146,7 +146,7 @@ BEGIN
             FILES.close(text.file)
         END;
 
-        C.push(texts, text);
+        stack.push(texts, text);
         text := NIL
     END
 END close;
@@ -155,10 +155,10 @@ END close;
 PROCEDURE open* (name: ARRAY OF CHAR): TEXT;
 VAR
     text: TEXT;
-    citem: C.ITEM;
+    citem: stack.item;
 
 BEGIN
-    citem := C.pop(texts);
+    citem := stack.pop(texts);
     IF citem = NIL THEN
         NEW(text)
     ELSE
@@ -206,5 +206,5 @@ END setTabSize;
 
 BEGIN
     TabSize := defTabSize;
-    texts := C.create()
+    texts := stack.create()
 END TEXTDRV.

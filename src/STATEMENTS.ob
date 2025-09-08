@@ -10,7 +10,7 @@ MODULE STATEMENTS;
 IMPORT
 
     PARS, PROG, SCAN, ARITH, STRINGS, LISTS, IL, X86, AMD64,
-    ERRORS, UTILS, AVL := AVLTREES, CONSOLE, C := COLLECTIONS, arch;
+    ERRORS, UTILS, AVL := AVLTREES, CONSOLE, stack, arch;
 
 
 CONST
@@ -69,7 +69,7 @@ VAR
 
     begcall, endcall: IL.COMMAND;
 
-    CaseLabels, CaseVar: C.COLLECTION;
+    CaseLabels, CaseVar: stack.item;
 
     CaseVariants: LISTS.LIST;
 
@@ -2769,7 +2769,7 @@ END LabelCmp;
 
 PROCEDURE DestroyLabel (VAR label: AVL.DATA);
 BEGIN
-    C.push(CaseLabels, label);
+    stack.push(CaseLabels, label);
     label := NIL
 END DestroyLabel;
 
@@ -2777,10 +2777,10 @@ END DestroyLabel;
 PROCEDURE NewVariant (label: INTEGER; cmd: IL.COMMAND): CASE_VARIANT;
 VAR
     res:   CASE_VARIANT;
-    citem: C.ITEM;
+    citem: stack.item;
 
 BEGIN
-    citem := C.pop(CaseVar);
+    citem := stack.pop(CaseVar);
     IF citem = NIL THEN
         NEW(res)
     ELSE
@@ -2857,14 +2857,14 @@ VAR
     PROCEDURE LabelRange (parser: PARS.PARSER; caseExpr: PARS.EXPR; VAR tree: AVL.NODE; variant: INTEGER): AVL.NODE;
     VAR
         label:     CASE_LABEL;
-        citem:     C.ITEM;
+        citem:     stack.item;
         pos, pos1: PARS.POSITION;
         node:      AVL.NODE;
         newnode:   BOOLEAN;
         range:     RANGE;
 
     BEGIN
-        citem := C.pop(CaseLabels);
+        citem := stack.pop(CaseLabels);
         IF citem = NIL THEN
             NEW(label)
         ELSE
@@ -3068,7 +3068,7 @@ VAR
 
         REPEAT
             item := LISTS.pop(CaseVariants);
-            C.push(CaseVar, item)
+            stack.push(CaseVar, item)
         UNTIL item(CASE_VARIANT).cmd = NIL
 
     END ParseCase;
@@ -3351,8 +3351,8 @@ BEGIN
     Options := options;
 
     ext := UTILS.FILE_EXT;
-    CaseLabels := C.create();
-    CaseVar := C.create();
+    CaseLabels := stack.create();
+    CaseVar := stack.create();
 
     CaseVariants := LISTS.create(NIL);
     LISTS.push(CaseVariants, NewVariant(0, NIL));

@@ -7,14 +7,14 @@
 
 MODULE AVLTREES;
 
-IMPORT C := COLLECTIONS;
+IMPORT stack;
 
 
 TYPE
 
-    DATA* = POINTER TO RECORD (C.ITEM) END;
+    DATA* = POINTER TO RECORD (stack.item) END;
 
-    NODE* = POINTER TO RECORD (C.ITEM)
+    NODE* = POINTER TO RECORD (stack.item)
 
         data*: DATA;
 
@@ -31,16 +31,16 @@ TYPE
 
 VAR
 
-    nodes: C.COLLECTION;
+    nodes: stack.item;
 
 
 PROCEDURE NewNode (data: DATA): NODE;
 VAR
     node:  NODE;
-    citem: C.ITEM;
+    citem: stack.item;
 
 BEGIN
-    citem := C.pop(nodes);
+    citem := stack.pop(nodes);
     IF citem = NIL THEN
         NEW(node)
     ELSE
@@ -183,7 +183,7 @@ BEGIN
             destructor(node.data)
         END;
 
-        C.push(nodes, node);
+        stack.push(nodes, node);
         node := NIL;
 
         destroy(left, destructor);
@@ -193,5 +193,5 @@ END destroy;
 
 
 BEGIN
-    nodes := C.create()
+    nodes := stack.create()
 END AVLTREES.
