@@ -7,7 +7,7 @@
 
 MODULE SCAN;
 
-IMPORT TXT := TEXTDRV, ARITH, S := STRINGS, ERRORS, LISTS;
+IMPORT TXT := TEXTDRV, ARITH, S := STRINGS, ERRORS, lists;
 
 
 CONST
@@ -51,13 +51,13 @@ TYPE
     TEXTSTR* = ARRAY TEXTLEN OF CHAR;
     IDSTR* = ARRAY IDLEN OF CHAR;
 
-    DEF = POINTER TO RECORD (LISTS.ITEM)
+    DEF = POINTER TO RECORD (lists.item)
 
         ident: IDSTR
 
     END;
 
-    STRING* = POINTER TO RECORD (LISTS.ITEM)
+    STRING* = POINTER TO RECORD (lists.item)
 
         s*: TEXTSTR;
         offset*, offsetW*, hash: INTEGER
@@ -99,7 +99,7 @@ VAR
 
     upto, LowerCase, _if: BOOLEAN;
 
-    strings, def: LISTS.LIST;
+    strings, def: lists.list;
 
     KW: ARRAY 33 OF RECORD upper, lower: KEYWORD; uhash, lhash: INTEGER END;
 
@@ -157,7 +157,7 @@ BEGIN
         res.offset  := -1;
         res.offsetW := -1;
         res.hash := hash;
-        LISTS.push(strings, res)
+        lists.push(strings, res)
     END
 
     RETURN res
@@ -773,11 +773,11 @@ VAR
 BEGIN
     NEW(item);
     COPY(str, item.ident);
-    LISTS.push(def, item)
+    lists.push(def, item)
 END NewDef;
 
 
 BEGIN
-    def := LISTS.create(NIL);
-    strings := LISTS.create(NIL)
+    def := lists.create();
+    strings := lists.create()
 END SCAN.

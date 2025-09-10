@@ -9,7 +9,7 @@ MODULE STATEMENTS;
 
 IMPORT
 
-    PARS, PROG, SCAN, ARITH, STRINGS, LISTS, IL, X86, AMD64,
+    PARS, PROG, SCAN, ARITH, STRINGS, lists, IL, X86, AMD64,
     ERRORS, UTILS, AVL := AVLTREES, CONSOLE, stack, arch;
 
 
@@ -54,7 +54,7 @@ TYPE
 
     END;
 
-    CASE_VARIANT = POINTER TO RECORD (LISTS.ITEM)
+    CASE_VARIANT = POINTER TO RECORD (lists.item)
 
         label:     INTEGER;
         cmd:       IL.COMMAND;
@@ -71,7 +71,7 @@ VAR
 
     CaseLabels, CaseVar: stack.item;
 
-    CaseVariants: LISTS.LIST;
+    CaseVariants: lists.list;
 
     tINTEGER, tBYTE, tCHAR, tWCHAR, tSET, tBOOLEAN, tREAL: PROG._TYPE;
 
@@ -1228,7 +1228,7 @@ END stProc;
 PROCEDURE ActualParameters (parser: PARS.PARSER; VAR e: PARS.EXPR);
 VAR
     proc:  PROG._TYPE;
-    param: LISTS.ITEM;
+    param: lists.item;
     e1:    PARS.EXPR;
     pos:   PARS.POSITION;
 
@@ -2944,7 +2944,7 @@ VAR
             IL.SetLabel(variant);
 
             IF ~isRecPtr(caseExpr) THEN
-                LISTS.push(CaseVariants, NewVariant(variant, last))
+                lists.push(CaseVariants, NewVariant(variant, last))
             END;
 
             parser.StatSeq(parser);
@@ -3023,10 +3023,10 @@ VAR
     VAR
         table, _end, _else: INTEGER;
         tree: AVL.NODE;
-        item: LISTS.ITEM;
+        item: lists.item;
 
     BEGIN
-        LISTS.push(CaseVariants, NewVariant(0, NIL));
+        lists.push(CaseVariants, NewVariant(0, NIL));
         _end  := IL.NewLabel();
         _else := IL.NewLabel();
         table := IL.NewLabel();
@@ -3067,7 +3067,7 @@ VAR
         IL.AddCmd0(IL.opENDSW);
 
         REPEAT
-            item := LISTS.pop(CaseVariants);
+            item := lists.pop(CaseVariants);
             stack.push(CaseVar, item)
         UNTIL item(CASE_VARIANT).cmd = NIL
 
@@ -3354,8 +3354,8 @@ BEGIN
     CaseLabels := stack.create();
     CaseVar := stack.create();
 
-    CaseVariants := LISTS.create(NIL);
-    LISTS.push(CaseVariants, NewVariant(0, NIL));
+    CaseVariants := lists.create();
+    lists.push(CaseVariants, NewVariant(0, NIL));
 
     IL.init(arch.cpu);
 

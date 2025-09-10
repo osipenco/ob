@@ -7,7 +7,7 @@
 
 MODULE PROG;
 
-IMPORT SCAN, LISTS, ARITH, ERRORS, stack, IL, UTILS, arch, STRINGS, PATHS;
+IMPORT SCAN, lists, ARITH, ERRORS, stack, IL, UTILS, arch, STRINGS, PATHS;
 
 
 CONST
@@ -85,7 +85,7 @@ TYPE
 
     _TYPE* = POINTER TO rTYPE;
 
-    FRWPTR* = POINTER TO RECORD (LISTS.ITEM)
+    FRWPTR* = POINTER TO RECORD (lists.item)
 
         _type:       _TYPE;
         baseIdent:   SCAN.IDENT;
@@ -96,30 +96,30 @@ TYPE
 
     END;
 
-    PROC* = POINTER TO RECORD (LISTS.ITEM)
+    PROC* = POINTER TO RECORD (lists.item)
 
         label*:      INTEGER;
         used*:       BOOLEAN;
         processed*:  BOOLEAN;
-        _import*:    LISTS.ITEM;
-        using*:      LISTS.LIST;
+        _import*:    lists.item;
+        using*:      lists.list;
         enter*,
-        leave*:      LISTS.ITEM
+        leave*:      lists.item
 
     END;
 
-    USED_PROC = POINTER TO RECORD (LISTS.ITEM)
+    USED_PROC = POINTER TO RECORD (lists.item)
 
         proc: PROC
 
     END;
 
-    rUNIT = RECORD (LISTS.ITEM)
+    rUNIT = RECORD (lists.item)
 
         fname*:      PATHS.PATH;
         name*:       SCAN.IDENT;
-        idents*:     LISTS.LIST;
-        frwPointers: LISTS.LIST;
+        idents*:     lists.list;
+        frwPointers: lists.list;
         gscope:      IDENT;
         closed*:     BOOLEAN;
         scopeLvl*:   INTEGER;
@@ -132,7 +132,7 @@ TYPE
 
     PARAM* = POINTER TO rPARAM;
 
-    rTYPE = RECORD (LISTS.ITEM)
+    rTYPE = RECORD (lists.item)
 
         typ*:        INTEGER;
         size*:       INTEGER;
@@ -140,8 +140,8 @@ TYPE
         length*:     INTEGER;
         align*:      INTEGER;
         base*:       _TYPE;
-        fields*:     LISTS.LIST;
-        params*:     LISTS.LIST;
+        fields*:     lists.list;
+        params*:     lists.list;
         unit*:       UNIT;
         closed*:     BOOLEAN;
         num*:        INTEGER;
@@ -151,7 +151,7 @@ TYPE
 
     END;
 
-    rFIELD = RECORD (LISTS.ITEM)
+    rFIELD = RECORD (lists.item)
 
         _type*:      _TYPE;
         name*:       SCAN.IDENT;
@@ -160,7 +160,7 @@ TYPE
 
     END;
 
-    rPARAM = RECORD (LISTS.ITEM)
+    rPARAM = RECORD (lists.item)
 
         name*:       SCAN.IDENT;
         _type*:      _TYPE;
@@ -169,12 +169,12 @@ TYPE
 
     END;
 
-    rIDENT = RECORD (LISTS.ITEM)
+    rIDENT = RECORD (lists.item)
 
         name*:       SCAN.IDENT;
         typ*:        INTEGER;
         export*:     BOOLEAN;
-        _import*:    LISTS.ITEM;
+        _import*:    lists.item;
         unit*:       UNIT;
         value*:      ARITH.VALUE;
         _type*:      _TYPE;
@@ -190,14 +190,14 @@ TYPE
     PROGRAM = RECORD
 
         recCount:    INTEGER;
-        units*:      LISTS.LIST;
-        types*:      LISTS.LIST;
+        units*:      lists.list;
+        types*:      lists.list;
         sysunit*:    UNIT;
         rtl*:        UNIT;
         bss*:        INTEGER;
         locsize*:    INTEGER;
 
-        procs*:      LISTS.LIST;
+        procs*:      lists.list;
 
         sysflags*:   SET;
         options*:    OPTIONS;
@@ -211,7 +211,7 @@ TYPE
 
     END;
 
-    DELIMPORT = PROCEDURE (_import: LISTS.ITEM);
+    DELIMPORT = PROCEDURE (_import: lists.item);
 
 
 VAR
@@ -293,7 +293,7 @@ BEGIN
     WHILE ident # NIL DO
         prev := ident.prev(IDENT);
         IF ~ident.export THEN
-            LISTS.delete(unit.idents, ident);
+            lists.delete(unit.idents, ident);
             stack.push(idents, ident)
         END;
         ident := prev
@@ -355,12 +355,12 @@ BEGIN
             proc.label := 0;
             proc.used := FALSE;
             proc.processed := FALSE;
-            proc.using := LISTS.create(NIL);
-            LISTS.push(program.procs, proc);
+            proc.using := lists.create();
+            lists.push(program.procs, proc);
             item.proc := proc
         END;
 
-        LISTS.push(unit.idents, item)
+        lists.push(unit.idents, item)
     ELSE
         item := NIL
     END
@@ -371,8 +371,8 @@ END addIdent;
 
 PROCEDURE UseProc* (unit: UNIT; call_proc: PROC);
 VAR
-    procs: LISTS.LIST;
-    cur:   LISTS.ITEM;
+    procs: lists.list;
+    cur:   lists.item;
     proc:  USED_PROC;
 
 BEGIN
@@ -389,7 +389,7 @@ BEGIN
         IF cur = NIL THEN
             NEW(proc);
             proc.proc := call_proc;
-            LISTS.push(procs, proc)
+            lists.push(procs, proc)
         END
     END
 END UseProc;
@@ -459,7 +459,7 @@ BEGIN
         item.name.hash := 0;
         item.typ  := idGUARD;
 
-        LISTS.push(unit.idents, item)
+        lists.push(unit.idents, item)
     END
 
     RETURN res
@@ -480,12 +480,12 @@ BEGIN
         IF (del.typ = idVAR) & (del.offset = -1) THEN
             ERRORS.HintMsg(del.name.s, del.pos.line, del.pos.col, 0)
         END;
-        LISTS.delete(unit.idents, del);
+        lists.delete(unit.idents, del);
         stack.push(idents, del)
     END;
 
     IF (item # NIL) & (item.typ = idGUARD) THEN
-        LISTS.delete(unit.idents, item);
+        lists.delete(unit.idents, item);
         stack.push(idents, item)
     END;
 
@@ -509,7 +509,7 @@ BEGIN
     newptr.linked    := FALSE;
     newptr.notRecord := FALSE;
 
-    LISTS.push(unit.frwPointers, newptr)
+    lists.push(unit.frwPointers, newptr)
 END frwPtr;
 
 
@@ -549,7 +549,7 @@ END linkPtr;
 PROCEDURE isTypeEq* (t1, t2: _TYPE): BOOLEAN;
 VAR
     res: BOOLEAN;
-    param1, param2: LISTS.ITEM;
+    param1, param2: lists.item;
 
 BEGIN
     IF t1 = t2 THEN
@@ -741,8 +741,8 @@ BEGIN
 
     unit.name        := name;
     unit.closed      := FALSE;
-    unit.idents      := LISTS.create(NIL);
-    unit.frwPointers := LISTS.create(NIL);
+    unit.idents      := lists.create();
+    unit.frwPointers := lists.create();
 
     ASSERT(openScope(unit, NIL));
 
@@ -753,7 +753,7 @@ BEGIN
 
     unit.gscope := unit.idents.last(IDENT);
 
-    LISTS.push(program.units, unit);
+    lists.push(program.units, unit);
 
     unit.scopeLvl := 0;
     unit.scopes[0] := NIL;
@@ -815,7 +815,7 @@ BEGIN
         field._type  := NIL;
         field.offset := self.size;
 
-        LISTS.push(self.fields, field)
+        lists.push(self.fields, field)
     END
 
     RETURN res
@@ -887,7 +887,7 @@ BEGIN
         param._type := NIL;
         param.vPar  := vPar;
 
-        LISTS.push(self.params, param)
+        lists.push(self.params, param)
     END
 
     RETURN res
@@ -941,7 +941,7 @@ END getFloatParamsPos;
 
 PROCEDURE setParams* (self: _TYPE; _type: _TYPE);
 VAR
-    item: LISTS.ITEM;
+    item: lists.item;
     param: PARAM;
     word, size: INTEGER;
 
@@ -1003,8 +1003,8 @@ BEGIN
     t.length  := length;
     t.align   := 0;
     t.base    := NIL;
-    t.fields  := LISTS.create(NIL);
-    t.params  := LISTS.create(NIL);
+    t.fields  := lists.create();
+    t.params  := lists.create();
     t.unit    := unit;
     t.num     := 0;
 
@@ -1027,7 +1027,7 @@ BEGIN
         t.closed := TRUE
     END;
 
-    LISTS.push(program.types, t)
+    lists.push(program.types, t)
 
     RETURN t
 END enterType;
@@ -1138,7 +1138,7 @@ VAR
 
     PROCEDURE process (proc: PROC);
     VAR
-        used_proc: LISTS.ITEM;
+        used_proc: lists.item;
 
     BEGIN
         proc.processed := TRUE;
@@ -1208,9 +1208,9 @@ BEGIN
     program.recCount := -1;
     program.bss := 0;
 
-    program.units := LISTS.create(NIL);
-    program.types := LISTS.create(NIL);
-    program.procs := LISTS.create(NIL);
+    program.units := lists.create();
+    program.types := lists.create();
+    program.procs := lists.create();
 
     program.stTypes.tINTEGER := enterType(tINTEGER, arch.word_size, 0, NIL);
     program.stTypes.tBYTE    := enterType(tBYTE,                   1, 0, NIL);

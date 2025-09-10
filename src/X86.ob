@@ -7,7 +7,7 @@
 
 MODULE X86;
 
-IMPORT IL, REG, UTILS, LISTS, BIN, ELF, PROG,
+IMPORT IL, REG, UTILS, lists, BIN, ELF, PROG,
        CHL := CHUNKLISTS, PATHS, arch, ERRORS;
 
 
@@ -39,7 +39,7 @@ TYPE
     COMMAND = IL.COMMAND;
 
 
-    ANYCODE = POINTER TO RECORD (LISTS.ITEM)
+    ANYCODE = POINTER TO RECORD (lists.item)
 
         offset: INTEGER
 
@@ -92,7 +92,7 @@ VAR
 
     program: BIN.PROGRAM;
 
-    CodeList: LISTS.LIST;
+    CodeList: lists.list;
 
     tcount, LocVarSize, mainLocVarSize: INTEGER;
 
@@ -119,7 +119,7 @@ BEGIN
         NEW(c);
         c.code[0] := n;
         c.length  := 1;
-        LISTS.push(CodeList, c)
+        lists.push(CodeList, c)
     END
 
 END OutByte;
@@ -397,7 +397,7 @@ BEGIN
     NEW(reloc);
     reloc.op := op;
     reloc.value := value;
-    LISTS.push(CodeList, reloc)
+    lists.push(CodeList, reloc)
 END Reloc;
 
 
@@ -424,7 +424,7 @@ VAR
             END;
             c.length := 5
         END;
-        LISTS.insertL(CodeList, label, c)
+        lists.inleft(CodeList, label, c)
     END pushImm;
 
 
@@ -444,7 +444,7 @@ BEGIN
     j.label := label;
     j.jmp   := cc;
     j.short := FALSE;
-    LISTS.push(CodeList, j)
+    lists.push(CodeList, j)
 END jcc;
 
 
@@ -456,7 +456,7 @@ BEGIN
     NEW(j);
     j.label := label;
     j.short := FALSE;
-    LISTS.push(CodeList, j)
+    lists.push(CodeList, j)
 END jmp;
 
 
@@ -468,7 +468,7 @@ BEGIN
     NEW(c);
     c.label := label;
     c.short := TRUE;
-    LISTS.push(CodeList, c)
+    lists.push(CodeList, c)
 END call;
 
 
@@ -514,7 +514,7 @@ VAR
 BEGIN
     NEW(L);
     L.label := label;
-    LISTS.push(CodeList, L)
+    lists.push(CodeList, L)
 END SetLabel;
 
 
@@ -2343,7 +2343,7 @@ VAR
     dcount, i: INTEGER;
 
 
-    PROCEDURE _import (imp: LISTS.LIST);
+    PROCEDURE _import (imp: lists.list);
     VAR
         lib:  IL.IMPORT_LIB;
         proc: IL.IMPORT_PROC;
@@ -2432,7 +2432,7 @@ BEGIN
     tcount := CHL.Length(IL.codes.types);
 
     opt := options;
-    CodeList := LISTS.create(NIL);
+    CodeList := lists.create();
 
     program := BIN.create(IL.codes.lcount);
 
@@ -2460,7 +2460,7 @@ END CodeGen;
 PROCEDURE SetProgram* (prog: BIN.PROGRAM);
 BEGIN
     program := prog;
-    CodeList := LISTS.create(NIL)
+    CodeList := lists.create()
 END SetProgram;
 
 

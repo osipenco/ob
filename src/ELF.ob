@@ -7,7 +7,7 @@
 
 MODULE ELF;
 
-IMPORT BIN, WR := WRITER, CHL := CHUNKLISTS, LISTS, UTILS, STRINGS;
+IMPORT BIN, WR := WRITER, CHL := CHUNKLISTS, lists, UTILS, STRINGS;
 
 
 CONST
@@ -69,14 +69,14 @@ TYPE
     END;
 
 
-    Elf32_Dyn = POINTER TO RECORD (LISTS.ITEM)
+    Elf32_Dyn = POINTER TO RECORD (lists.item)
 
         d_tag, d_val: INTEGER
 
     END;
 
 
-    Elf32_Sym = POINTER TO RECORD (LISTS.ITEM)
+    Elf32_Sym = POINTER TO RECORD (lists.item)
 
         name, value, size: INTEGER;
         info, other: CHAR;
@@ -87,9 +87,9 @@ TYPE
 
 VAR
 
-    dynamic: LISTS.LIST;
+    dynamic: lists.list;
     strtab:  CHL.BYTELIST;
-    symtab:  LISTS.LIST;
+    symtab:  lists.list;
 
     hashtab, bucket, chain: CHL.INTLIST;
 
@@ -134,7 +134,7 @@ BEGIN
     NEW(dyn);
     dyn.d_tag := tag;
     dyn.d_val := val;
-    LISTS.push(dynamic, dyn)
+    lists.push(dynamic, dyn)
 END NewDyn;
 
 
@@ -151,7 +151,7 @@ BEGIN
     sym.other := other;
     sym.shndx := shndx;
 
-    LISTS.push(symtab, sym)
+    lists.push(symtab, sym)
 END NewSym;
 
 
@@ -222,7 +222,7 @@ VAR
 
     Interpreter: ARRAY 40 OF CHAR; lenInterpreter: INTEGER;
 
-    item: LISTS.ITEM;
+    item: lists.item;
 
     Name: ARRAY 2048 OF CHAR;
 
@@ -268,8 +268,8 @@ BEGIN
 END fixup;
 
 BEGIN
-    dynamic := LISTS.create(NIL);
-    symtab  := LISTS.create(NIL);
+    dynamic := lists.create();
+    symtab  := lists.create();
     strtab  := CHL.CreateByteList();
 
     IF amd64 THEN
@@ -369,7 +369,7 @@ BEGIN
         ASSERT(CHL.GetStr(program.data, program.modname, Name))
     END;
 
-    symCount := LISTS.count(symtab);
+    symCount := lists.len(symtab);
 
     bucket := CHL.CreateIntList();
     chain  := CHL.CreateIntList();
@@ -408,17 +408,17 @@ BEGIN
 
     NewDyn(DT_NULL, 0);
 
-    Offset.symtab := LISTS.count(dynamic) * (8 + 8 * ORD(amd64));
+    Offset.symtab := lists.len(dynamic) * (8 + 8 * ORD(amd64));
     Offset.reltab := Offset.symtab + symCount * (16 + 8 * ORD(amd64));
     Offset.hash   := Offset.reltab + (8 + 16 * ORD(amd64)) * 2;
     Offset.strtab := Offset.hash + (symCount * 2 + 2) * 4;
 
     DynAdr := phdr[dyn].p_offset + BaseAdr;
 
-    item := LISTS.getidx(dynamic, 1); item(Elf32_Dyn).d_val := Offset.strtab + DynAdr;
-    item := LISTS.getidx(dynamic, 3); item(Elf32_Dyn).d_val := Offset.symtab + DynAdr;
-    item := LISTS.getidx(dynamic, 5); item(Elf32_Dyn).d_val := Offset.reltab + DynAdr;
-    item := LISTS.getidx(dynamic, 8); item(Elf32_Dyn).d_val := Offset.hash   + DynAdr;
+    item := lists.select(dynamic, 1); item(Elf32_Dyn).d_val := Offset.strtab + DynAdr;
+    item := lists.select(dynamic, 3); item(Elf32_Dyn).d_val := Offset.symtab + DynAdr;
+    item := lists.select(dynamic, 5); item(Elf32_Dyn).d_val := Offset.reltab + DynAdr;
+    item := lists.select(dynamic, 8); item(Elf32_Dyn).d_val := Offset.hash   + DynAdr;
 
     phdr[dyn].p_filesz := Offset.strtab + CHL.Length(strtab) + 8 + 8 * ORD(amd64);
     phdr[dyn].p_memsz  := phdr[dyn].p_filesz;
@@ -492,8 +492,8 @@ BEGIN
     END;
 
     IF so THEN
-        item := LISTS.getidx(dynamic, 10); item(Elf32_Dyn).d_val := ehdr.e_entry;
-        item := LISTS.getidx(dynamic, 11); item(Elf32_Dyn).d_val := BIN.GetLabel(program, fini) + ehdr.e_entry
+        item := lists.select(dynamic, 10); item(Elf32_Dyn).d_val := ehdr.e_entry;
+        item := lists.select(dynamic, 11); item(Elf32_Dyn).d_val := BIN.GetLabel(program, fini) + ehdr.e_entry
     END;
 
     WR.Create(FileName);

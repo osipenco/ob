@@ -7,7 +7,7 @@
 
 MODULE CHUNKLISTS;
 
-IMPORT LISTS, WR := WRITER;
+IMPORT lists, WR := WRITER;
 
 
 CONST
@@ -18,7 +18,7 @@ CONST
 
 TYPE
 
-    ANYLIST = POINTER TO RECORD (LISTS.LIST)
+    ANYLIST = POINTER TO RECORD (lists.list)
 
         length: INTEGER
 
@@ -26,7 +26,7 @@ TYPE
 
     BYTELIST* = POINTER TO RECORD (ANYLIST) END;
 
-    BYTECHUNK = POINTER TO RECORD (LISTS.ITEM)
+    BYTECHUNK = POINTER TO RECORD (lists.item)
 
         data:   ARRAY LENOFBYTECHUNK OF BYTE;
         count:  INTEGER
@@ -36,7 +36,7 @@ TYPE
 
     INTLIST* = POINTER TO RECORD (ANYLIST) END;
 
-    INTCHUNK = POINTER TO RECORD (LISTS.ITEM)
+    INTCHUNK = POINTER TO RECORD (lists.item)
 
         data:   ARRAY LENOFINTCHUNK OF INTEGER;
         count:  INTEGER
@@ -47,13 +47,13 @@ TYPE
 PROCEDURE SetByte* (list: BYTELIST; idx: INTEGER; byte: BYTE);
 VAR
     chunk: BYTECHUNK;
-    item:  LISTS.ITEM;
+    item:  lists.item;
 
 BEGIN
     ASSERT(idx >= 0);
     ASSERT(list # NIL);
 
-    item := LISTS.getidx(list, idx DIV LENOFBYTECHUNK);
+    item := lists.select(list, idx DIV LENOFBYTECHUNK);
     ASSERT(item # NIL);
     chunk := item(BYTECHUNK);
     idx := idx MOD LENOFBYTECHUNK;
@@ -65,13 +65,13 @@ END SetByte;
 PROCEDURE GetByte* (list: BYTELIST; idx: INTEGER): BYTE;
 VAR
     chunk: BYTECHUNK;
-    item:  LISTS.ITEM;
+    item:  lists.item;
 
 BEGIN
     ASSERT(idx >= 0);
     ASSERT(list # NIL);
 
-    item := LISTS.getidx(list, idx DIV LENOFBYTECHUNK);
+    item := lists.select(list, idx DIV LENOFBYTECHUNK);
     ASSERT(item # NIL);
     chunk := item(BYTECHUNK);
     idx := idx MOD LENOFBYTECHUNK;
@@ -92,7 +92,7 @@ BEGIN
     IF chunk.count = LENOFBYTECHUNK THEN
         NEW(chunk);
         chunk.count := 0;
-        LISTS.push(list, chunk)
+        lists.push(list, chunk)
     END;
 
     chunk.data[chunk.count] := byte;
@@ -153,32 +153,32 @@ END WriteToFile;
 PROCEDURE CreateByteList* (): BYTELIST;
 VAR
     bytelist: BYTELIST;
-    list:     LISTS.LIST;
     chunk:    BYTECHUNK;
 
 BEGIN
     NEW(bytelist);
-    list := LISTS.create(bytelist);
+    bytelist.first := nil;
+    bytelist.last := nil;
     bytelist.length := 0;
 
     NEW(chunk);
     chunk.count := 0;
-    LISTS.push(list, chunk)
+    lists.push(bytelist, chunk)
 
-    RETURN list(BYTELIST)
+    RETURN bytelist
 END CreateByteList;
 
 
 PROCEDURE SetInt* (list: INTLIST; idx: INTEGER; int: INTEGER);
 VAR
     chunk: INTCHUNK;
-    item:  LISTS.ITEM;
+    item:  lists.item;
 
 BEGIN
     ASSERT(idx >= 0);
     ASSERT(list # NIL);
 
-    item := LISTS.getidx(list, idx DIV LENOFINTCHUNK);
+    item := lists.select(list, idx DIV LENOFINTCHUNK);
     ASSERT(item # NIL);
     chunk := item(INTCHUNK);
     idx := idx MOD LENOFINTCHUNK;
@@ -191,13 +191,13 @@ PROCEDURE GetInt* (list: INTLIST; idx: INTEGER): INTEGER;
 
 VAR
     chunk: INTCHUNK;
-    item:  LISTS.ITEM;
+    item:  lists.item;
 
 BEGIN
     ASSERT(idx >= 0);
     ASSERT(list # NIL);
 
-    item := LISTS.getidx(list, idx DIV LENOFINTCHUNK);
+    item := lists.select(list, idx DIV LENOFINTCHUNK);
     ASSERT(item # NIL);
     chunk := item(INTCHUNK);
     idx := idx MOD LENOFINTCHUNK;
@@ -218,7 +218,7 @@ BEGIN
     IF chunk.count = LENOFINTCHUNK THEN
         NEW(chunk);
         chunk.count := 0;
-        LISTS.push(list, chunk)
+        lists.push(list, chunk)
     END;
 
     chunk.data[chunk.count] := int;
@@ -231,19 +231,19 @@ END PushInt;
 PROCEDURE CreateIntList* (): INTLIST;
 VAR
     intlist:  INTLIST;
-    list:     LISTS.LIST;
     chunk:    INTCHUNK;
 
 BEGIN
     NEW(intlist);
-    list := LISTS.create(intlist);
+    intlist.first := nil;
+    intlist.last := nil;
     intlist.length := 0;
 
     NEW(chunk);
     chunk.count := 0;
-    LISTS.push(list, chunk)
+    lists.push(intlist, chunk);
 
-    RETURN list(INTLIST)
+    RETURN intlist
 END CreateIntList;
 
 

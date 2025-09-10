@@ -7,7 +7,7 @@
 
 MODULE IL;
 
-IMPORT LISTS, SCAN, STRINGS, CHL := CHUNKLISTS, stack, PATHS;
+IMPORT lists, SCAN, STRINGS, CHL := CHUNKLISTS, stack, PATHS;
 
 
 CONST
@@ -135,7 +135,7 @@ CONST
 
 TYPE
 
-    COMMAND* = POINTER TO RECORD (LISTS.ITEM)
+    COMMAND* = POINTER TO RECORD (lists.item)
 
         opcode*:    INTEGER;
         param1*:    INTEGER;
@@ -158,21 +158,21 @@ TYPE
 
     END;
 
-    EXPORT_PROC* = POINTER TO RECORD (LISTS.ITEM)
+    EXPORT_PROC* = POINTER TO RECORD (lists.item)
 
         label*: INTEGER;
         name*:  SCAN.IDSTR
 
     END;
 
-    IMPORT_LIB* = POINTER TO RECORD (LISTS.ITEM)
+    IMPORT_LIB* = POINTER TO RECORD (lists.item)
 
         name*:   SCAN.TEXTSTR;
-        procs*:  LISTS.LIST
+        procs*:  lists.list
 
     END;
 
-    IMPORT_PROC* = POINTER TO RECORD (LISTS.ITEM)
+    IMPORT_PROC* = POINTER TO RECORD (lists.item)
 
         label*: INTEGER;
         lib*:   IMPORT_LIB;
@@ -187,9 +187,9 @@ TYPE
         last:       COMMAND;
         begcall:    CMDSTACK;
         endcall:    CMDSTACK;
-        commands*:  LISTS.LIST;
-        export*:    LISTS.LIST;
-        _import*:   LISTS.LIST;
+        commands*:  lists.list;
+        export*:    lists.list;
+        _import*:   lists.list;
         types*:     CHL.INTLIST;
         data*:      CHL.BYTELIST;
         dmin*:      INTEGER;
@@ -464,7 +464,7 @@ BEGIN
     END;
 
     IF old_opcode = -1 THEN
-        LISTS.insert(codes.commands, cur, nov);
+        lists.inright(codes.commands, cur, nov);
         codes.last := nov
     ELSE
         stack.push(commands, nov);
@@ -543,14 +543,14 @@ END AddCmd0;
 
 PROCEDURE delete (cmd: COMMAND);
 BEGIN
-    LISTS.delete(codes.commands, cmd);
+    lists.delete(codes.commands, cmd);
     stack.push(commands, cmd)
 END delete;
 
 
-PROCEDURE delete2* (first, last: LISTS.ITEM);
+PROCEDURE delete2* (first, last: lists.item);
 VAR
-    cur, next: LISTS.ITEM;
+    cur, next: lists.item;
 
 BEGIN
     cur := first;
@@ -558,13 +558,13 @@ BEGIN
     IF first # last THEN
         REPEAT
             next := cur.next;
-            LISTS.delete(codes.commands, cur);
+            lists.delete(codes.commands, cur);
             stack.push(commands, cur);
             cur := next
         UNTIL cur = last
     END;
 
-    LISTS.delete(codes.commands, cur);
+    lists.delete(codes.commands, cur);
     stack.push(commands, cur)
 END delete2;
 
@@ -792,7 +792,7 @@ BEGIN
 END Call;
 
 
-PROCEDURE CallImp* (proc: LISTS.ITEM; callconv, fparams: INTEGER);
+PROCEDURE CallImp* (proc: lists.item; callconv, fparams: INTEGER);
 BEGIN
     fastcall(callconv);
     CASE callconv OF
@@ -821,7 +821,7 @@ BEGIN
 END AssignProc;
 
 
-PROCEDURE AssignImpProc* (proc: LISTS.ITEM);
+PROCEDURE AssignImpProc* (proc: lists.item);
 BEGIN
     Jmp(opSAVEIP, proc(IMPORT_PROC).label)
 END AssignImpProc;
@@ -833,7 +833,7 @@ BEGIN
 END PushProc;
 
 
-PROCEDURE PushImpProc* (proc: LISTS.ITEM);
+PROCEDURE PushImpProc* (proc: lists.item);
 BEGIN
     Jmp(opPUSHIP, proc(IMPORT_PROC).label)
 END PushImpProc;
@@ -849,7 +849,7 @@ BEGIN
 END ProcCmp;
 
 
-PROCEDURE ProcImpCmp* (proc: LISTS.ITEM; eq: BOOLEAN);
+PROCEDURE ProcImpCmp* (proc: lists.item; eq: BOOLEAN);
 BEGIN
     IF eq THEN
         Jmp(opEQIP, proc(IMPORT_PROC).label)
@@ -1054,7 +1054,7 @@ BEGIN
     NEW(exp);
     exp.label := label;
     exp.name  := name;
-    LISTS.push(codes.export, exp)
+    lists.push(codes.export, exp)
 END AddExp;
 
 
@@ -1072,8 +1072,8 @@ BEGIN
     IF lib = NIL THEN
         NEW(lib);
         lib.name := dll;
-        lib.procs := LISTS.create(NIL);
-        LISTS.push(codes._import, lib)
+        lib.procs := lists.create();
+        lists.push(codes._import, lib)
     END;
 
     p := lib.procs.first(IMPORT_PROC);
@@ -1087,7 +1087,7 @@ BEGIN
         p.label := NewLabel();
         p.lib   := lib;
         p.count := 1;
-        LISTS.push(lib.procs, p)
+        lists.push(lib.procs, p)
     ELSE
         INC(p.count)
     END
@@ -1096,7 +1096,7 @@ BEGIN
 END AddImp;
 
 
-PROCEDURE DelImport* (imp: LISTS.ITEM);
+PROCEDURE DelImport* (imp: lists.item);
 VAR
     lib: IMPORT_LIB;
 
@@ -1104,9 +1104,9 @@ BEGIN
     DEC(imp(IMPORT_PROC).count);
     IF imp(IMPORT_PROC).count = 0 THEN
         lib := imp(IMPORT_PROC).lib;
-        LISTS.delete(lib.procs, imp);
+        lists.delete(lib.procs, imp);
         IF lib.procs.first = NIL THEN
-            LISTS.delete(codes._import, lib)
+            lists.delete(codes._import, lib)
         END
     END
 END DelImport;
@@ -1126,15 +1126,15 @@ BEGIN
     codes.begcall.top := -1;
     NEW(codes.endcall);
     codes.endcall.top := -1;
-    codes.commands := LISTS.create(NIL);
-    codes.export   := LISTS.create(NIL);
-    codes._import  := LISTS.create(NIL);
+    codes.commands := lists.create();
+    codes.export   := lists.create();
+    codes._import  := lists.create();
     codes.types    := CHL.CreateIntList();
     codes.data     := CHL.CreateByteList();
 
-    NEW(cmd); cmd.opcode := opNOP; LISTS.push(codes.commands, cmd);
+    NEW(cmd); cmd.opcode := opNOP; lists.push(codes.commands, cmd);
     codes.last := cmd;
-    NEW(cmd); cmd.opcode := opNOP; LISTS.push(codes.commands, cmd);
+    NEW(cmd); cmd.opcode := opNOP; lists.push(codes.commands, cmd);
 
     AddRec(0);
 

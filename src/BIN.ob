@@ -7,7 +7,7 @@
 
 MODULE BIN;
 
-IMPORT LISTS, CHL := CHUNKLISTS, ARITH, UTILS;
+IMPORT lists, CHL := CHUNKLISTS, ARITH, UTILS;
 
 
 CONST
@@ -22,14 +22,14 @@ CONST
 
 TYPE
 
-    RELOC* = POINTER TO RECORD (LISTS.ITEM)
+    RELOC* = POINTER TO RECORD (lists.item)
 
         opcode*: INTEGER;
         offset*: INTEGER
 
     END;
 
-    IMPRT* = POINTER TO RECORD (LISTS.ITEM)
+    IMPRT* = POINTER TO RECORD (lists.item)
 
         nameoffs*: INTEGER;
         label*:    INTEGER;
@@ -39,7 +39,7 @@ TYPE
 
     END;
 
-    EXPRT* = POINTER TO RECORD (LISTS.ITEM)
+    EXPRT* = POINTER TO RECORD (lists.item)
 
         nameoffs*: INTEGER;
         label*:    INTEGER
@@ -58,9 +58,9 @@ TYPE
         modname*:   INTEGER;
         _import*:   CHL.BYTELIST;
         export*:    CHL.BYTELIST;
-        rel_list*:  LISTS.LIST;
-        imp_list*:  LISTS.LIST;
-        exp_list*:  LISTS.LIST
+        rel_list*:  lists.list;
+        imp_list*:  lists.list;
+        exp_list*:  lists.list
 
     END;
 
@@ -80,9 +80,9 @@ BEGIN
         CHL.PushInt(program.labels, 0)
     END;
 
-    program.rel_list := LISTS.create(NIL);
-    program.imp_list := LISTS.create(NIL);
-    program.exp_list := LISTS.create(NIL);
+    program.rel_list := lists.create();
+    program.imp_list := lists.create();
+    program.exp_list := lists.create();
 
     program.data    := CHL.CreateByteList();
     program.code    := CHL.CreateByteList();
@@ -110,7 +110,7 @@ BEGIN
     NEW(cmd);
     cmd.opcode := opcode;
     cmd.offset := CHL.Length(program.code);
-    LISTS.push(program.rel_list, cmd)
+    lists.push(program.rel_list, cmd)
 END PutReloc;
 
 
@@ -234,7 +234,7 @@ BEGIN
     NEW(imp);
     imp.nameoffs := CHL.PushStr(program._import, name);
     imp.label := label;
-    LISTS.push(program.imp_list, imp)
+    lists.push(program.imp_list, imp)
 END Import;
 
 
@@ -272,12 +272,12 @@ BEGIN
 
     IF cur # NIL THEN
         IF cur.prev # NIL THEN
-            LISTS.insert(program.exp_list, cur.prev, exp)
+            lists.inright(program.exp_list, cur.prev, exp)
         ELSE
-            LISTS.insertL(program.exp_list, cur, exp)
+            lists.inleft(program.exp_list, cur, exp)
         END
     ELSE
-        LISTS.push(program.exp_list, exp)
+        lists.push(program.exp_list, exp)
     END
 
 END Export;
