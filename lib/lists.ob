@@ -1,0 +1,250 @@
+﻿(*
+    BSD 2-Clause License
+
+    Copyright (c) 2018-2021, Anton Krotov
+    All rights reserved.
+
+    Copyright (c) 2025, Max Osipenco
+    All rights reserved.
+*)
+
+
+
+
+module lists;
+
+
+
+
+import stack;
+
+
+
+
+type
+    item* = pointer to record (stack.item)
+        prev*, next* : item
+    end;
+
+    list* = pointer to record
+        first*, last* : item
+    end;
+
+
+
+
+procedure len* (collection : list) : integer;
+
+var
+    element : item;
+    count : integer;
+
+begin
+    assert(collection # nil);
+
+    count := 0;
+    element := collection.first;
+
+    while element # nil do
+        element := element.next;
+        inc(count)
+    end;
+
+    return count
+end;
+
+
+
+
+procedure select* (collection : list; index : integer) : item;
+
+var
+    element : item;
+
+begin
+    assert(collection # nil);
+    assert(index >= 0);
+    assert(index < len(collection));
+
+    element := collection.first;
+
+    while index > 0 do
+        element := element.next;
+        dec(index)
+    end;
+
+    return element
+end;
+
+
+
+
+procedure push* (collection : list; element : item);
+
+begin
+    assert(collection # nil);
+    assert(element # nil);
+
+    if collection.last # nil then
+        collection.last.next := element
+    else
+        collection.first := element
+    end;
+
+    element.prev := collection.last;
+    collection.last := element;
+    element.next := nil
+end;
+
+
+
+
+procedure pop* (collection : list) : item;
+
+var
+    final : item;
+
+begin
+    assert(collection # nil);
+
+    final := collection.last;
+
+    if final # nil then
+        if final = collection.first then
+            collection.first := nil
+        else
+            collection.last.next := nil
+        end;
+
+        collection.last := final.prev;
+        final.next := nil;
+        final.prev := nil
+    end;
+
+    return final
+end;
+
+
+
+
+procedure inright* (collection : list; current, element : item);
+
+var
+    subsequent : item;
+
+begin
+    assert(collection # nil);
+    assert(current # nil);
+    assert(element # nil);
+
+    subsequent := current.next;
+
+    if subsequent # nil then
+        subsequent.prev := element
+    else
+        collection.last := element
+    end;
+
+    element.next := subsequent;
+    current.next := element;
+    element.prev := current
+end;
+
+
+
+
+procedure inleft* (collection : list; current, element : item);
+
+var
+    preceding : item;
+
+begin
+    assert(collection # nil);
+    assert(current # nil);
+    assert(element # nil);
+
+    preceding := current.prev;
+
+    if preceding # nil then
+        preceding.next := element
+    else
+        collection.first := element
+    end;
+
+    element.prev := preceding;
+    current.prev := element;
+    element.next := current
+end;
+
+
+
+
+procedure insert* (collection : list; index : integer; element : item);
+
+begin
+    inleft(collection, select(collection, index), element)
+end;
+
+
+
+
+procedure delete* (collection : list; element : item);
+
+var
+    preceding, subsequent : item;
+
+begin
+    assert(collection # nil);
+    assert(element # nil);
+
+    preceding := element.prev;
+    subsequent := element.next;
+
+    if subsequent # nil then
+        if preceding # nil then
+            preceding.next := subsequent;
+            subsequent.prev := preceding
+        else
+            subsequent.prev := nil;
+            collection.first := subsequent
+        end
+    else
+        if preceding # nil then
+            preceding.next := nil;
+            collection.last := preceding
+        else
+            collection.first := nil;
+            collection.last := nil
+        end
+    end
+end;
+
+
+
+
+procedure remove* (collection : list; index : integer);
+
+begin
+    delete(collection, select(collection, index))
+end;
+
+
+
+
+procedure create* () : list;
+
+var
+    collection : list;
+
+begin
+    new(collection);
+    collection.first := nil;
+    collection.last := nil;
+
+    return collection
+end;
+
+
+
+
+end lists.
