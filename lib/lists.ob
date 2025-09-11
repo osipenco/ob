@@ -202,21 +202,24 @@ begin
 
     if subsequent # nil then
         if preceding # nil then
-            preceding.next := subsequent;
-            subsequent.prev := preceding
+            preceding.next := subsequent
         else
-            subsequent.prev := nil;
             collection.first := subsequent
-        end
+        end;
+
+        subsequent.prev := preceding
     else
         if preceding # nil then
-            preceding.next := nil;
-            collection.last := preceding
+            preceding.next := nil
         else
-            collection.first := nil;
-            collection.last := nil
-        end
-    end
+            collection.first := nil
+        end;
+
+        collection.last := preceding
+    end;
+
+    element.prev := nil;
+    element.next := nil
 end;
 
 
